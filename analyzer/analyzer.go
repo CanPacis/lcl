@@ -38,13 +38,9 @@ func (s *Semantics) ScanTargets() []language.Tag {
 	targets := []language.Tag{}
 
 	for _, node := range s.ast.For.List {
-		tag, err := language.Parse(node.Value)
+		tag, err := s.checker.RegisterTarget(node)
 		if err != nil {
-			s.error(&errs.ResolveError{
-				Value: node.Value,
-				Kind:  errs.TARGET,
-				Node:  node,
-			})
+			s.error(err)
 		}
 		targets = append(targets, tag)
 	}
@@ -90,11 +86,11 @@ func (s *Semantics) ScanTypes() *types.Environment {
 }
 
 func (s *Semantics) ScanProcs() *pkg.Scope {
-	defs := map[string]*ast.ProcDefStmt{}
+	defs := map[string]*ast.FnDefStmt{}
 
 	for _, node := range s.ast.Stmts {
 		switch node := node.(type) {
-		case *ast.ProcDefStmt:
+		case *ast.FnDefStmt:
 			if err := s.checker.RegisterProc(node); err != nil {
 				s.error(err)
 			} else {
@@ -118,6 +114,85 @@ func (s *Semantics) ScanProcs() *pkg.Scope {
 		s.checker.self = types.Empty
 	}
 	return s.checker.scope
+}
+
+func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
+	key := &Key{
+		Name:   entry.Name.Value,
+		Fields: make(map[language.Tag]string),
+	}
+
+	for _, field := range entry.Fields {
+		tag, err := s.checker.LookupTag(field.Tag)
+		if err != nil {
+			s.error(err)
+		}
+		key.Fields[tag] = field.Value.Value
+	}
+	for name, tag := range s.checker.tags {
+		_, ok := key.Fields[tag]
+		if !ok {
+			s.error(&errs.TargetMismatchError{
+				Target:  name,
+				Tag:     tag,
+				Missing: true,
+				Node:    entry,
+			})
+		}
+	}
+
+	return key
+}
+
+func (s *Semantics) extractTemplateEntry(entry *ast.TemplateEntry) *Template {
+	typ, err := s.checker.ResolveType(entry.Type)
+	if err != nil {
+		s.error(err)
+	}
+
+	template := &Template{
+		Name:   entry.Name.Value,
+		Type:   typ,
+		Fields: make(map[string]int),
+	}
+
+	return template
+}
+
+func (s *Semantics) extractSection(stmt *ast.SectionStmt) *Section {
+	section := &Section{
+		Name:      stmt.Name.Value,
+		Keys:      make(map[string]*Key),
+		Templates: make(map[string]*Template),
+	}
+
+	for _, entry := range stmt.Body {
+		switch entry := entry.(type) {
+		case *ast.KeyEntry:
+			key := s.extractKeyEntry(entry)
+			section.Keys[entry.Name.Value] = key
+		case *ast.TemplateEntry:
+			template := s.extractTemplateEntry(entry)
+			section.Templates[entry.Name.Value] = template
+		case *ast.SectionStmt:
+			section.Sections = append(section.Sections, s.extractSection(entry))
+		}
+	}
+
+	return section
+}
+
+func (s *Semantics) ScanSections() []*Section {
+	sections := []*Section{}
+
+	for _, node := range s.ast.Stmts {
+		switch node := node.(type) {
+		case *ast.SectionStmt:
+			sections = append(sections, s.extractSection(node))
+		}
+	}
+
+	return sections
 }
 
 func (s *Semantics) Scan() error {

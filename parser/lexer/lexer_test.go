@@ -108,16 +108,14 @@ func TestAlphanumeric(t *testing.T) {
 	tests := CaseList{
 		{
 			skipsWhitespace: true,
-			Input:           "for in import proc type section key template identifier",
+			Input:           "for in import fn   type section              identifier",
 			Expected: []Expectation{
 				Exp(token.FOR, "for", 1, 1, 1, 4),
 				Exp(token.IN, "in", 1, 5, 1, 7),
 				Exp(token.IMPORT, "import", 1, 8, 1, 14),
-				Exp(token.PROC, "proc", 1, 15, 1, 19),
+				Exp(token.FN, "fn", 1, 15, 1, 19),
 				Exp(token.TYPE, "type", 1, 20, 1, 24),
 				Exp(token.SECTION, "section", 1, 25, 1, 32),
-				Exp(token.KEY, "key", 1, 33, 1, 36),
-				Exp(token.TEMPLATE, "template", 1, 37, 1, 45),
 				Exp(token.IDENT, "identifier", 1, 46, 1, 56),
 			},
 		},

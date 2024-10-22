@@ -18,55 +18,56 @@ type File struct {
 
 type Stmt interface {
 	Node
+	Comments() []*CommentStmt
 	stmtNode()
 }
 
 type ForStmt struct {
-	Node
+	Stmt
 	List []*IdentExpr
 	In   *IdentExpr
 }
 
 type ImportStmt struct {
-	Node
+	Stmt
 	List []*IdentExpr
 }
 
 type TypeDefStmt struct {
-	Node
+	Stmt
 	Name *IdentExpr
 	Type TypeExpr
 }
 
-type ProcDefStmt struct {
+type Parameter struct {
 	Node
-	Name *IdentExpr
-	Body Expr
+	Index int
+	Name  *IdentExpr
+	Type  TypeExpr
+}
+
+type FnDefStmt struct {
+	Stmt
+	Name   *IdentExpr
+	Params []*Parameter
+	Body   Expr
 }
 
 type SectionStmt struct {
-	Node
+	Stmt
 	Name *IdentExpr
 	Body []Entry
 }
 
 type CommentStmt struct {
-	Node
+	Stmt
 	Literal string
 	Raw     string
 }
 
 type EmptyStmt struct {
-	Node
+	Stmt
 }
-
-func (s *ForStmt) stmtNode()     {}
-func (s *ImportStmt) stmtNode()  {}
-func (s *TypeDefStmt) stmtNode() {}
-func (s *ProcDefStmt) stmtNode() {}
-func (s *SectionStmt) stmtNode() {}
-func (s *CommentStmt) stmtNode() {}
-func (s *EmptyStmt) stmtNode()   {}
 
 type Entry interface {
 	Node
@@ -149,9 +150,9 @@ type TernaryExpr struct {
 	Right     Expr
 }
 
-type ProcCallExpr struct {
+type CallExpr struct {
 	Node
-	Proc  Expr
+	Fn    Expr
 	Param Expr
 }
 
@@ -222,7 +223,7 @@ type TypePair struct {
 func (e *SelfExpr) exprNode()        {}
 func (e *BinaryExpr) exprNode()      {}
 func (e *TernaryExpr) exprNode()     {}
-func (e *ProcCallExpr) exprNode()    {}
+func (e *CallExpr) exprNode()        {}
 func (e *MemberExpr) exprNode()      {}
 func (e *IndexExpr) exprNode()       {}
 func (e *GroupExpr) exprNode()       {}

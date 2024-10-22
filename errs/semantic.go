@@ -5,6 +5,7 @@ import (
 
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/parser/token"
+	"golang.org/x/text/language"
 )
 
 type SemanticError struct {
@@ -55,15 +56,17 @@ type Resolvable string
 const (
 	IMPORT Resolvable = "import"
 	TARGET Resolvable = "target"
+	TAG    Resolvable = "tag"
 	TYPE   Resolvable = "type"
 	PROC   Resolvable = "proc"
 	CONST  Resolvable = "const"
 )
 
 const (
-	Unresolved = "unresolved"
-	Duplicate  = "duplicate definition"
-	Type       = "type error"
+	Unresolved     = "unresolved"
+	Duplicate      = "duplicate definition"
+	Type           = "type error"
+	TargetMismatch = "target mismatch"
 
 	NotComparable = "expressions are not comparable"
 	NotInferrable = "expression's type cannot be inferred"
@@ -81,6 +84,9 @@ type ResolveError struct {
 }
 
 func (e *ResolveError) Error() string {
+	if e.Kind == TAG {
+		return fmt.Sprintf("%s %s: %s, you did not specify '%s' as a target", Unresolved, e.Kind, e.Value, e.Value)
+	}
 	return fmt.Sprintf("%s %s: %s", Unresolved, e.Kind, e.Value)
 }
 
@@ -125,5 +131,23 @@ func (e *DuplicateDefError) Error() string {
 }
 
 func (e *DuplicateDefError) Position() (start token.Position, end token.Position) {
+	return e.Node.Start(), e.Node.End()
+}
+
+type TargetMismatchError struct {
+	Target  string
+	Tag     language.Tag
+	Missing bool
+	Node    ast.Node
+}
+
+func (e *TargetMismatchError) Error() string {
+	if e.Missing {
+		return fmt.Sprintf("%s: key is missing the '%s' field", TargetMismatch, e.Tag)
+	}
+	return fmt.Sprintf("%s: idk", TargetMismatch)
+}
+
+func (e *TargetMismatchError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
 }

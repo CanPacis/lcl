@@ -18,6 +18,24 @@ func NewNode(s, e token.Position) *node {
 	return &node{start: s, end: e}
 }
 
+type stmtNode struct {
+	Node
+	comments []*CommentStmt
+}
+
+func (n *stmtNode) Comments() []*CommentStmt {
+	return n.comments
+}
+
+func (n *stmtNode) stmtNode() {}
+
+func NewStmtNode(s, e token.Position, comments ...*CommentStmt) *stmtNode {
+	return &stmtNode{
+		Node:     NewNode(s, e),
+		comments: comments,
+	}
+}
+
 func NewIdent(t token.Token) *IdentExpr {
 	return &IdentExpr{
 		Node:  NewNode(t.Start, t.End),

@@ -1,8 +1,6 @@
 package analyzer_test
 
 import (
-	"bytes"
-	"reflect"
 	"testing"
 
 	"github.com/CanPacis/go-i18n/analyzer"
@@ -14,37 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type err struct {
-	err error
-}
-
-func (e *err) Error() string {
-	if e == nil {
-		return ""
-	}
-	return "wrapped: " + e.err.Error()
-}
-
-func (e *err) Unwrap() error {
-	return e.err
-}
-
-func (e *err) Is(target error) bool {
-	return reflect.TypeOf(e.err).String() == reflect.TypeOf(target).String()
-}
-
-func wrap(e error) error {
-	if e == nil {
-		return nil
-	}
-	return &err{err: e}
-}
-
 var checker = analyzer.NewChecker(pkg.NewScope(), types.NewEnvironment())
-
-type Runner interface {
-	Run(*assert.Assertions)
-}
 
 type TypeCase struct {
 	In  ast.TypeExpr
@@ -88,10 +56,6 @@ func Run(cases []Runner, t *testing.T) {
 	for _, c := range cases {
 		c.Run(assert)
 	}
-}
-
-func file(src string) *parser.File {
-	return parser.NewFile("test.lcl", bytes.NewBuffer([]byte(src)))
 }
 
 func expr(src string) ast.Expr {

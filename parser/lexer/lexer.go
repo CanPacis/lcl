@@ -15,14 +15,12 @@ const eof rune = -1
 
 var (
 	keywords = map[string]token.Kind{
-		"for":      token.FOR,
-		"in":       token.IN,
-		"import":   token.IMPORT,
-		"proc":     token.PROC,
-		"type":     token.TYPE,
-		"section":  token.SECTION,
-		"key":      token.KEY,
-		"template": token.TEMPLATE,
+		"for":     token.FOR,
+		"in":      token.IN,
+		"import":  token.IMPORT,
+		"fn":      token.FN,
+		"type":    token.TYPE,
+		"section": token.SECTION,
 	}
 
 	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*'}

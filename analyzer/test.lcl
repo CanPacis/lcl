@@ -1,0 +1,78 @@
+#test: TestAnalyzer0
+for (en fr de) in i18n
+
+
+#test: TestAnalyzer1
+for (invalid) in i18n
+
+
+#test: TestAnalyzer2
+for (en) in i18n import (A B C)
+
+
+#test: TestLocalTypeAnalysis0
+for (en) in i18n
+
+type Test bool
+type Test int
+
+
+#test: TestLocalTypeAnalysis1
+for (en) in i18n
+
+type Test undefined
+
+
+#test: TestLocalTypeAnalysis2
+for (en) in i18n
+
+fn test .
+fn test .
+
+
+#test: TestLocalTypeAnalysis3
+for (en) in i18n
+
+fn test undefined
+
+
+#test: TestLocalTypeAnalysis4
+for (en) in i18n
+
+fn p1 itoa(year(.))
+fn p2 year(itoa(.))
+fn p3 year(.)
+
+
+#test: TestLocalTypeAnalysis5
+for (en) in i18n
+
+fn test year((. == 4))
+
+
+#test: TestForeignTypeAnalysis0
+for (en) in i18n
+
+import A
+
+fn p A.B(.)
+
+
+#test: TestSections0
+for (en) in i18n
+
+section S {
+  key K {
+    en "Simple key"
+  }
+
+  template T1 {
+    en `Simple template`
+  }::string
+
+  section S {
+    template T1 {
+      en `Sub template`
+    }::string
+  }
+}

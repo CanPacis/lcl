@@ -80,11 +80,9 @@ const (
 	FOR
 	IN
 	IMPORT
-	PROC
+	FN
 	TYPE
 	SECTION
-	KEY
-	TEMPLATE
 )
 
 var tokenMap = map[Kind]string{
@@ -131,14 +129,12 @@ var tokenMap = map[Kind]string{
 
 	KEYWORD: "keyword",
 
-	FOR:      "for",
-	IN:       "in",
-	IMPORT:   "import",
-	PROC:     "proc",
-	TYPE:     "type",
-	SECTION:  "section",
-	KEY:      "key",
-	TEMPLATE: "template",
+	FOR:     "for",
+	IN:      "in",
+	IMPORT:  "import",
+	FN:      "fn",
+	TYPE:    "type",
+	SECTION: "section",
 }
 
 type Token struct {

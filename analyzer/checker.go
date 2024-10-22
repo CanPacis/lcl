@@ -7,6 +7,7 @@ import (
 	pkg "github.com/CanPacis/go-i18n/package"
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/types"
+	"golang.org/x/text/language"
 )
 
 type ResolveContext int
@@ -21,12 +22,33 @@ const (
 	CONST
 )
 
+type Section struct {
+	Name      string
+	Keys      map[string]*Key
+	Templates map[string]*Template
+	Sections  []*Section
+}
+
+type Template struct {
+	Name   string
+	Type   types.Type
+	Fields map[string]int
+}
+
+type Key struct {
+	Name   string
+	Fields map[language.Tag]string
+}
+
 type Checker struct {
 	env   *types.Environment
 	scope *pkg.Scope
 
-	types map[string]*ast.TypeDefStmt
-	procs map[string]*ast.ProcDefStmt
+	tags map[string]language.Tag
+
+	types   map[string]*ast.TypeDefStmt
+	procs   map[string]*ast.FnDefStmt
+	targets map[string]*ast.IdentExpr
 
 	self types.Type
 
@@ -170,9 +192,9 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		}
 
 		return left, nil
-	case *ast.ProcCallExpr:
+	case *ast.CallExpr:
 		c.Begin(PROC)
-		proc, err := c.ResolveExpr(expr.Proc)
+		proc, err := c.ResolveExpr(expr.Fn)
 		if err != nil {
 			return types.Empty, err
 		}
@@ -180,7 +202,7 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		callable, ok := proc.(*types.Proc)
 		if !ok {
-			return types.Empty, errs.NewTypeError(expr.Proc, errs.NotCallable)
+			return types.Empty, errs.NewTypeError(expr.Fn, errs.NotCallable)
 		}
 
 		param, err := c.ResolveExpr(expr.Param)
@@ -261,7 +283,7 @@ func (c *Checker) RegisterType(node *ast.TypeDefStmt) error {
 	return nil
 }
 
-func (c *Checker) RegisterProc(node *ast.ProcDefStmt) error {
+func (c *Checker) RegisterProc(node *ast.FnDefStmt) error {
 	if original, exists := c.procs[node.Name.Value]; exists {
 		return &errs.DuplicateDefError{
 			Name:     node.Name.Value,
@@ -275,13 +297,52 @@ func (c *Checker) RegisterProc(node *ast.ProcDefStmt) error {
 	return nil
 }
 
+func (c *Checker) RegisterTarget(node *ast.IdentExpr) (language.Tag, error) {
+	if original, exists := c.procs[node.Value]; exists {
+		return language.Tag{}, &errs.DuplicateDefError{
+			Name:     node.Value,
+			Original: original,
+			Node:     node,
+		}
+	}
+
+	c.targets[node.Value] = node
+	tag, err := language.Parse(node.Value)
+	if err != nil {
+		return language.Tag{}, &errs.ResolveError{
+			Value: node.Value,
+			Kind:  errs.TARGET,
+			Node:  node,
+		}
+	}
+	c.tags[node.Value] = tag
+	return tag, nil
+}
+
+func (c *Checker) LookupTag(expr *ast.IdentExpr) (language.Tag, error) {
+	for name, tag := range c.tags {
+		if name == expr.Value {
+			return tag, nil
+		}
+	}
+	return language.Tag{}, &errs.ResolveError{
+		Value: expr.Value,
+		Kind:  errs.TAG,
+		Node:  expr,
+	}
+}
+
 func NewChecker(scope *pkg.Scope, env *types.Environment) *Checker {
 	c := &Checker{
 		scope: scope,
 		env:   env,
 		self:  types.Empty,
-		types: make(map[string]*ast.TypeDefStmt),
-		procs: make(map[string]*ast.ProcDefStmt),
+
+		tags: make(map[string]language.Tag),
+
+		types:   make(map[string]*ast.TypeDefStmt),
+		procs:   make(map[string]*ast.FnDefStmt),
+		targets: make(map[string]*ast.IdentExpr),
 	}
 	c.Init()
 	return c

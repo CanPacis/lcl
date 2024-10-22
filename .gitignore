@@ -1,3 +1,3 @@
 .DS_Store
-*.lcl
 *.bnf
+*.gen.go
