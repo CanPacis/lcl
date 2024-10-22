@@ -127,21 +127,3 @@ func (e *DuplicateDefError) Error() string {
 func (e *DuplicateDefError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
 }
-
-// type FieldDeclError struct {
-// 	Excess  []string
-// 	Missing []string
-// 	Entry   ast.Entry
-// }
-
-// func (e *FieldDeclError) Error() string {
-// 	return fmt.Sprintf(
-// 		"field declaration: missing %s and excess %s",
-// 		strings.Join(e.Missing, " "),
-// 		strings.Join(e.Excess, " "),
-// 	)
-// }
-
-// func (e *FieldDeclError) Position() (start token.Position, end token.Position) {
-// 	return e.Entry.Start(), e.Entry.End()
-// }
