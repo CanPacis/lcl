@@ -69,9 +69,9 @@ const (
 	TargetMismatch = "target mismatch"
 
 	NotComparable = "expressions are not comparable"
-	NotInferrable = "expression's type cannot be inferred"
 	PredIsNonBool = "predicate expression must be a bool"
 	PredIsInvalid = "both sides of the predicate must be the same type"
+	ArgumentCount = "invalid number of arguments"
 	NotCallable   = "expression is not callable"
 	NotAssignable = "expression is not assignable"
 	NotIndexable  = "expression is not indexable"

@@ -20,7 +20,7 @@ type AnalyzerCase struct {
 func (c *AnalyzerCase) Run(assert *assert.Assertions) {
 	ast, err := parser.New(c.File).Parse()
 	if err != nil {
-		panic(err)
+		panic(FormatError(err))
 	}
 	sem := analyzer.New(c.File, ast)
 	if c.Test != nil {
@@ -111,24 +111,16 @@ func TestLocalTypeAnalysis(t *testing.T) {
 				p2 := exports["p2"].(*types.Fn)
 				p3 := exports["p3"].(*types.Fn)
 
-				assert.Equal(types.Time, p1.In)
+				assert.Equal([]types.Type{types.Time}, p1.In)
 				assert.Equal(types.String, p1.Out)
 
-				assert.Equal(types.Int, p2.In)
-				assert.Equal(types.Empty, p2.Out)
+				assert.Equal([]types.Type{types.Time}, p2.In)
+				assert.Equal(types.Int, p2.Out)
 
-				assert.Equal(types.Time, p3.In)
+				assert.Equal([]types.Type{types.Time}, p3.In)
 				assert.Equal(types.Int, p3.Out)
 			},
 			Contains: errs.NotAssignable,
-		},
-		&AnalyzerCase{
-			File: Test["TestLocalTypeAnalysis5"],
-			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-				s.ScanTypes()
-				s.ScanFns()
-			},
-			Contains: errs.NotInferrable,
 		},
 	}
 

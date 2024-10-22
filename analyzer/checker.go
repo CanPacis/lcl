@@ -31,8 +31,9 @@ type Section struct {
 
 type Template struct {
 	Name   string
-	Type   types.Type
-	Fields map[string]int
+	Params []types.Type
+	// TODO: figure this out?
+	Fields map[language.Tag]int
 }
 
 type Key struct {
@@ -41,16 +42,14 @@ type Key struct {
 }
 
 type Checker struct {
-	env   *types.Environment
-	scope *pkg.Scope
+	env    *types.Environment
+	scopes []*pkg.Scope
 
 	tags map[string]language.Tag
 
 	types   map[string]*ast.TypeDefStmt
 	fns     map[string]*ast.FnDefStmt
 	targets map[string]*ast.IdentExpr
-
-	self types.Type
 
 	frame []ResolveContext
 	init  bool
@@ -64,11 +63,11 @@ func (c *Checker) Init() {
 	c.init = true
 }
 
-func (c *Checker) Begin(ctx ResolveContext) {
+func (c *Checker) BeginCtx(ctx ResolveContext) {
 	c.frame = append(c.frame, ctx)
 }
 
-func (c *Checker) End() {
+func (c *Checker) EndCtx() {
 	c.frame = c.frame[:len(c.frame)-1]
 }
 
@@ -76,9 +75,21 @@ func (c Checker) Context() ResolveContext {
 	return c.frame[len(c.frame)-1]
 }
 
+func (c Checker) Scope() *pkg.Scope {
+	return c.scopes[len(c.scopes)-1]
+}
+
+func (c *Checker) PushScope() {
+	c.scopes = append(c.scopes, pkg.NewSubScope(c.Scope()))
+}
+
+func (c *Checker) PopScope() {
+	c.scopes = c.scopes[:len(c.scopes)-1]
+}
+
 func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
-	c.Begin(TYPE)
-	defer c.End()
+	c.BeginCtx(TYPE)
+	defer c.EndCtx()
 
 	err := &errs.ResolveError{
 		Value: "unknown",
@@ -147,8 +158,6 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	}
 
 	switch expr := expr.(type) {
-	case *ast.SelfExpr:
-		return types.Self, nil
 	case *ast.BinaryExpr:
 		left, err := c.ResolveExpr(expr.Left)
 		if err != nil {
@@ -161,9 +170,6 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		}
 
 		if !c.Comparable(left, right) {
-			if (left == types.Self || right == types.Self) && c.Context() == FN_BODY {
-				return types.Empty, errs.NewTypeError(expr, "%s: self expression is ambigious", errs.NotInferrable)
-			}
 			return types.Empty, errs.NewTypeError(expr, "%s: %s %s", errs.NotComparable, left.Name(), right.Name())
 		}
 		return types.Bool, nil
@@ -193,32 +199,45 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		return left, nil
 	case *ast.CallExpr:
-		c.Begin(FN)
+		c.BeginCtx(FN)
 		fn, err := c.ResolveExpr(expr.Fn)
 		if err != nil {
 			return types.Empty, err
 		}
-		c.End()
+		c.EndCtx()
 
 		callable, ok := fn.(*types.Fn)
 		if !ok {
 			return types.Empty, errs.NewTypeError(expr.Fn, errs.NotCallable)
 		}
 
-		// param, err := c.ResolveExpr(expr.Args)
-		// if err != nil {
-		// 	return types.Empty, err
-		// }
+		if len(callable.In) != len(expr.Args) {
+			return callable.Out, errs.NewTypeError(
+				expr.Fn,
+				"%s, fn expects %d params but %d is given",
+				errs.ArgumentCount,
+				len(callable.In),
+				len(expr.Args),
+			)
+		}
 
-		// if !c.Assignable(callable.In, param) {
-		// 	return types.Empty, errs.NewTypeError(
-		// 		expr.Args,
-		// 		"%s, fn expects a '%s' but got '%s'",
-		// 		errs.NotAssignable,
-		// 		callable.In.Name(),
-		// 		param.Name(),
-		// 	)
-		// }
+		for i, arg := range expr.Args {
+			typ, err := c.ResolveExpr(arg)
+			if err != nil {
+				return callable.Out, err
+			}
+			param := callable.In[i]
+
+			if !c.Assignable(param, typ) {
+				return types.Empty, errs.NewTypeError(
+					arg,
+					"%s, fn expects a '%s' here but '%s' is given",
+					errs.NotAssignable,
+					param.Name(),
+					typ.Name(),
+				)
+			}
+		}
 
 		return callable.Out, nil
 	case *ast.MemberExpr:
@@ -228,7 +247,7 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	case *ast.GroupExpr:
 		return c.ResolveExpr(expr.Expr)
 	case *ast.IdentExpr:
-		typ, ok := c.scope.Lookup(expr.Value, "")
+		typ, ok := c.Scope().Lookup(expr.Value)
 		if ok {
 			return typ, nil
 		}
@@ -261,11 +280,6 @@ func (c *Checker) Convertible(left, right types.Type) bool {
 }
 
 func (c *Checker) Assignable(left, right types.Type) bool {
-	if c.Context() == FN_BODY && right == types.Self {
-		c.self = left
-		return true
-	}
-
 	return left.Name() == right.Name()
 }
 
@@ -293,7 +307,7 @@ func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
 	}
 
 	c.fns[node.Name.Value] = node
-	c.scope.Define(node.Name.Value, types.Empty)
+	c.Scope().Define(node.Name.Value, types.Empty)
 	return nil
 }
 
@@ -334,9 +348,8 @@ func (c *Checker) LookupTag(expr *ast.IdentExpr) (language.Tag, error) {
 
 func NewChecker(scope *pkg.Scope, env *types.Environment) *Checker {
 	c := &Checker{
-		scope: scope,
-		env:   env,
-		self:  types.Empty,
+		scopes: []*pkg.Scope{scope},
+		env:    env,
 
 		tags: make(map[string]language.Tag),
 

@@ -215,10 +215,8 @@ func (p *Parser) parseFnDefStmt() *ast.FnDefStmt {
 	start := p.expect(token.FN)
 
 	params := []*ast.Parameter{}
-	if p.current.Kind == token.LEFT_PARENS {
-		for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-			params = append(params, p.parseParameter(i))
-		}
+	for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
+		params = append(params, p.parseParameter(i))
 	}
 
 	p.skip()
@@ -494,8 +492,6 @@ func (p *Parser) parseBasicExpr() ast.Expr {
 		return p.parseTemplateExpr()
 	case token.NUMBER:
 		return p.parseNumberExpr()
-	case token.DOT:
-		return p.parseSelfExpr()
 	default:
 		p.expect(token.STRING, token.TEMPLATE, token.NUMBER, token.DOT)
 		return &ast.EmptyExpr{
@@ -583,13 +579,6 @@ func (p *Parser) parseNumberExpr() *ast.NumberLitExpr {
 	return &ast.NumberLitExpr{
 		Node:  ast.NewNode(expr.Start, expr.End),
 		Value: value,
-	}
-}
-
-func (p *Parser) parseSelfExpr() *ast.SelfExpr {
-	expr := p.expect(token.DOT)
-	return &ast.SelfExpr{
-		Node: ast.NewNode(expr.Start, expr.End),
 	}
 }
 

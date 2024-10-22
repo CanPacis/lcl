@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/CanPacis/go-i18n/errs"
 	"github.com/CanPacis/go-i18n/parser"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,6 +44,16 @@ type Runner interface {
 
 func file(src string) *parser.File {
 	return parser.NewFile("test.lcl", bytes.NewBuffer([]byte(src)))
+}
+
+func FormatError(err error) string {
+	tle, ok := err.(errs.TopLevelError)
+	if !ok {
+		return err.Error()
+	}
+
+	start, end := tle.Position()
+	return fmt.Sprintf("%s at %s - %s in %s", tle.Error(), start, end, tle.File())
 }
 
 var Test = map[string]*parser.File{}

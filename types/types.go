@@ -23,7 +23,6 @@ var Int = &constant{"int"}
 var Float = &constant{"float"}
 var Bool = &constant{"bool"}
 var Time = &constant{"time"}
-var Self = &constant{"self"}
 var Empty = &constant{"empty"}
 
 type List struct {
@@ -76,10 +75,16 @@ func NewStruct(pairs ...TypePair) *Struct {
 }
 
 type Fn struct {
-	In  Type
+	In  []Type
 	Out Type
 }
 
 func (t *Fn) Name() string {
-	return fmt.Sprintf("fn (%s -> %s)", t.In.Name(), t.Out.Name())
+	in := []string{}
+
+	for _, typ := range t.In {
+		in = append(in, typ.Name())
+	}
+
+	return fmt.Sprintf("fn (%s) -> %s", strings.Join(in, " "), t.Out.Name())
 }

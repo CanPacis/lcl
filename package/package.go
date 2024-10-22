@@ -7,8 +7,9 @@ import (
 type Scope struct {
 	imports map[string]*Scope
 	builtin map[string]types.Type
-
 	objects map[string]types.Type
+
+	parent *Scope
 }
 
 func (s *Scope) Exports() map[string]types.Type {
@@ -23,14 +24,23 @@ func (s *Scope) Define(name string, typ types.Type) {
 	s.objects[name] = typ
 }
 
-func (s Scope) Lookup(name, prefix string) (types.Type, bool) {
-	if len(prefix) > 0 {
-		scope := s.imports[prefix]
-		if scope == nil {
-			return nil, false
+func (s Scope) Lookup(name string) (types.Type, bool) {
+	// if len(prefix) > 0 {
+	// 	scope := s.imports[prefix]
+	// 	if scope == nil {
+	// 		return nil, false
+	// 	}
+
+	// 	return scope.Lookup(name, "")
+	// }
+
+	if s.parent != nil {
+		typ, ok := s.objects[name]
+		if ok {
+			return typ, ok
 		}
 
-		return scope.Lookup(name, "")
+		return s.parent.Lookup(name)
 	}
 
 	typ, ok := s.builtin[name]
@@ -42,8 +52,7 @@ func (s Scope) Lookup(name, prefix string) (types.Type, bool) {
 	if ok {
 		return typ, ok
 	}
-
-	return typ, ok
+	return types.Empty, false
 }
 
 func NewScope() *Scope {
@@ -54,14 +63,24 @@ func NewScope() *Scope {
 			"true":  types.Bool,
 			"false": types.Bool,
 			"itoa": &types.Fn{
-				In:  types.Int,
+				In:  []types.Type{types.Int},
 				Out: types.String,
 			},
 			"year": &types.Fn{
-				In:  types.Time,
+				In:  []types.Type{types.Time},
 				Out: types.Int,
 			},
 		},
+	}
+}
+
+func NewSubScope(parent *Scope) *Scope {
+	return &Scope{
+		imports: make(map[string]*Scope),
+		objects: make(map[string]types.Type),
+		builtin: make(map[string]types.Type),
+
+		parent: parent,
 	}
 }
 

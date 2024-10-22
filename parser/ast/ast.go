@@ -133,10 +133,6 @@ type TypeExpr interface {
 	tExprNode()
 }
 
-type SelfExpr struct {
-	Node
-}
-
 type BinaryExpr struct {
 	Node
 	Operator token.Token
@@ -221,7 +217,6 @@ type TypePair struct {
 	Type  TypeExpr
 }
 
-func (e *SelfExpr) exprNode()        {}
 func (e *BinaryExpr) exprNode()      {}
 func (e *TernaryExpr) exprNode()     {}
 func (e *CallExpr) exprNode()        {}

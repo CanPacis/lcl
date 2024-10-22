@@ -100,20 +100,32 @@ func (s *Semantics) ScanFns() *pkg.Scope {
 	}
 
 	for name, def := range defs {
-		s.checker.Begin(FN_BODY)
+		in := []types.Type{}
+		s.checker.BeginCtx(FN_BODY)
+		s.checker.PushScope()
+
+		for _, param := range def.Params {
+			typ, err := s.checker.ResolveType(param.Type)
+			if err != nil {
+				s.error(err)
+			}
+			in = append(in, typ)
+			s.checker.Scope().Define(param.Name.Value, typ)
+		}
+
 		typ, err := s.checker.ResolveExpr(def.Body)
 		if err != nil {
 			s.error(err)
 		}
-		s.checker.End()
+		s.checker.PopScope()
+		s.checker.EndCtx()
 
-		s.checker.scope.Define(name, &types.Fn{
-			In:  s.checker.self,
+		s.checker.Scope().Define(name, &types.Fn{
+			In:  in,
 			Out: typ,
 		})
-		s.checker.self = types.Empty
 	}
-	return s.checker.scope
+	return s.checker.Scope()
 }
 
 func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
@@ -122,13 +134,18 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 		Fields: make(map[language.Tag]string),
 	}
 
-	// for _, field := range entry.Fields {
-	// tag, err := s.checker.LookupTag(field)
-	// if err != nil {
-	// 	s.error(err)
-	// }
-	// key.Fields[tag] = field.Value.Value
-	// }
+	for _, field := range entry.Fields {
+		switch field := field.(type) {
+		case *ast.StringField:
+			tag, err := s.checker.LookupTag(field.Tag)
+			if err != nil {
+				s.error(err)
+			}
+			key.Fields[tag] = field.Value.Value
+		default:
+			panic("wtf dude")
+		}
+	}
 
 	for name, tag := range s.checker.tags {
 		_, ok := key.Fields[tag]
@@ -146,15 +163,45 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 }
 
 func (s *Semantics) extractTemplateEntry(entry *ast.TemplateEntry) *Template {
-	// typ, err := s.checker.ResolveType(entry.Type)
-	// if err != nil {
-	// 	s.error(err)
-	// }
+	params := []types.Type{}
+	for _, param := range entry.Params {
+		typ, err := s.checker.ResolveType(param.Name)
+		if err != nil {
+			s.error(err)
+		}
+		params = append(params, typ)
+	}
 
 	template := &Template{
-		Name: entry.Name.Value,
-		// Type:   typ,
-		Fields: make(map[string]int),
+		Name:   entry.Name.Value,
+		Params: params,
+		Fields: make(map[language.Tag]int),
+	}
+
+	for _, field := range entry.Fields {
+		switch field := field.(type) {
+		case *ast.TemplateField:
+			tag, err := s.checker.LookupTag(field.Tag)
+			if err != nil {
+				s.error(err)
+			}
+
+			template.Fields[tag] = 0
+		default:
+			panic("wtf dude")
+		}
+	}
+
+	for name, tag := range s.checker.tags {
+		_, ok := template.Fields[tag]
+		if !ok {
+			s.error(&errs.TargetMismatchError{
+				Target:  name,
+				Tag:     tag,
+				Missing: true,
+				Node:    entry,
+			})
+		}
 	}
 
 	return template

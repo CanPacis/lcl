@@ -153,7 +153,7 @@ func TestComplexExpr(t *testing.T) {
 	scope := pkg.NewScope()
 	scope.Define("age", types.Int)
 	scope.Define("func", &types.Fn{
-		In:  types.Int,
+		In:  []types.Type{types.Int},
 		Out: types.String,
 	})
 	checker = analyzer.NewChecker(scope, types.NewEnvironment())
@@ -198,7 +198,7 @@ func TestComplexExpr(t *testing.T) {
 			Err: nil,
 		},
 		&ExprCase{
-			In:  expr(`age(.)`),
+			In:  expr(`age(0)`),
 			Out: types.Empty,
 			Err: &errs.TypeError{},
 		},
