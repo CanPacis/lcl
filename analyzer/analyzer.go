@@ -9,144 +9,222 @@ import (
 	"golang.org/x/text/language"
 )
 
-type Analyzer struct {
+type Semantics struct {
 	file    string
 	ast     *ast.File
 	checker *Checker
 
 	errors []error
-
-	Name    string
-	Targets map[string]language.Tag
-	TypeEnv *types.Environment
-	Scope   *pkg.Scope
-	Imports []*pkg.Package
 }
 
-func (a *Analyzer) error(err error) {
-	a.errors = append(a.errors, err)
-}
-
-func (a *Analyzer) Run() error {
-	a.scan()
-
-	if len(a.errors) != 0 {
-		return &errs.SemanticError{
-			Reasons: a.errors,
-			File:    a.file,
-		}
+func (s *Semantics) error(err error) {
+	if err != nil {
+		s.errors = append(s.errors, err)
 	}
-
-	return nil
 }
 
-func (a *Analyzer) scan() {
-	a.Name = a.ast.For.In.Value
+func (s Semantics) Errors() error {
+	if len(s.errors) == 0 {
+		return nil
+	}
+	return errs.NewSemanticError(s.errors, s.file)
+}
 
-	for _, node := range a.ast.For.List {
+func (s Semantics) ScanName() string {
+	return s.ast.For.In.Value
+}
+
+func (s *Semantics) ScanTargets() []language.Tag {
+	targets := []language.Tag{}
+
+	for _, node := range s.ast.For.List {
 		tag, err := language.Parse(node.Value)
 		if err != nil {
-			a.error(&errs.ResolveError{
-				Kind:  errs.TARGET,
+			s.error(&errs.ResolveError{
 				Value: node.Value,
+				Kind:  errs.TARGET,
 				Node:  node,
 			})
 		}
-
-		a.Targets[node.Value] = tag
+		targets = append(targets, tag)
 	}
+	return targets
+}
 
-	for _, node := range a.ast.Imports {
-		for _, name := range node.List {
-			pkg := a.resolveImport(name.Value)
+func (s *Semantics) ScanImports() []*pkg.Package {
+	imports := []*pkg.Package{}
 
-			if pkg != nil {
-				a.import_(pkg)
-			} else {
-				a.error(&errs.ResolveError{
-					Kind:  errs.IMPORT,
-					Value: name.Value,
-					Node:  name,
-				})
-			}
+	for _, node := range s.ast.Imports {
+		for _, ident := range node.List {
+			// TODO: resolve the import
+			imports = append(imports, pkg.New(ident.Value))
 		}
 	}
 
-	typeDefs := map[string]*ast.TypeDefStmt{}
-	procDefs := map[string]*ast.ProcDefStmt{}
+	return imports
+}
 
-	for _, node := range a.ast.Stmts {
+func (s *Semantics) ScanTypes() *types.Environment {
+	defs := map[string]*ast.TypeDefStmt{}
+
+	for _, node := range s.ast.Stmts {
 		switch node := node.(type) {
 		case *ast.TypeDefStmt:
-			if original, exists := typeDefs[node.Name.Value]; exists {
-				a.error(&errs.DuplicateDefError{
-					Name:     node.Name.Value,
-					Original: original,
-					Node:     node,
-				})
+			if err := s.checker.RegisterType(node); err != nil {
+				s.error(err)
 			} else {
-				typeDefs[node.Name.Value] = node
-				a.TypeEnv.Define(node.Name.Value, nil)
+				defs[node.Name.Value] = node
 			}
+		}
+	}
+
+	for name, def := range defs {
+		typ, err := s.checker.ResolveType(def.Type)
+		if err != nil {
+			s.error(err)
+		}
+		s.checker.env.Define(name, typ)
+	}
+
+	return s.checker.env
+}
+
+func (s *Semantics) ScanProcs() *pkg.Scope {
+	defs := map[string]*ast.ProcDefStmt{}
+
+	for _, node := range s.ast.Stmts {
+		switch node := node.(type) {
 		case *ast.ProcDefStmt:
-			if original, exists := procDefs[node.Name.Value]; exists {
-				a.error(&errs.DuplicateDefError{
-					Name:     node.Name.Value,
-					Original: original,
-					Node:     node,
-				})
+			if err := s.checker.RegisterProc(node); err != nil {
+				s.error(err)
 			} else {
-				procDefs[node.Name.Value] = node
-				a.Scope.Define(node.Name.Value, nil)
+				defs[node.Name.Value] = node
 			}
 		}
 	}
 
-	for name, stmt := range typeDefs {
-		typ, err := a.checker.ResolveType(stmt.Type)
+	for name, def := range defs {
+		s.checker.Begin(PROC_BODY)
+		typ, err := s.checker.ResolveExpr(def.Body)
 		if err != nil {
-			a.error(err)
+			s.error(err)
 		}
-		a.TypeEnv.Define(name, typ)
-	}
+		s.checker.End()
 
-	for name, stmt := range procDefs {
-		out, err := a.checker.ResolveExpr(stmt.Body)
-		if err != nil {
-			a.error(err)
-		}
-		a.Scope.Define(name, &types.Proc{
-			In:  types.Empty,
-			Out: out,
+		s.checker.scope.Define(name, &types.Proc{
+			In:  s.checker.self,
+			Out: typ,
 		})
+		s.checker.self = types.Empty
 	}
+	return s.checker.scope
 }
 
-func (a *Analyzer) resolveImport(name string) *pkg.Package {
-	switch name {
-	case "List":
-		return pkg.ListPkg
-	default:
-		return nil
-	}
+func (s *Semantics) Scan() error {
+	return s.Errors()
 }
 
-func (a *Analyzer) import_(pkg *pkg.Package) {
-	a.Imports = append(a.Imports, pkg)
-	a.TypeEnv.Import(pkg.Name, pkg.TypEnv)
-	a.Scope.Import(pkg.Name, pkg.Scope)
-}
+// func (a *Analyzer) scan() {
+// a.Name = a.ast.For.In.Value
 
-func New(file *parser.File, ast *ast.File) *Analyzer {
-	a := &Analyzer{
-		file: file.Name,
-		ast:  ast,
+// for _, node := range a.ast.For.List {
+// 	tag, err := language.Parse(node.Value)
+// 	if err != nil {
+// 		a.error(&errs.ResolveError{
+// 			Kind:  errs.TARGET,
+// 			Value: node.Value,
+// 			Node:  node,
+// 		})
+// 	}
 
-		Targets: make(map[string]language.Tag),
-		Scope:   pkg.NewScope(),
-		TypeEnv: types.NewEnvironment(),
+// 	a.Targets[node.Value] = tag
+// }
+
+// for _, node := range a.ast.Imports {
+// 	for _, name := range node.List {
+// 		pkg := a.resolveImport(name.Value)
+
+// 		if pkg != nil {
+// 			a.import_(pkg)
+// 		} else {
+// 			a.error(&errs.ResolveError{
+// 				Kind:  errs.IMPORT,
+// 				Value: name.Value,
+// 				Node:  name,
+// 			})
+// 		}
+// 	}
+// }
+
+// typeDefs := map[string]*ast.TypeDefStmt{}
+// procDefs := map[string]*ast.ProcDefStmt{}
+
+// for _, node := range a.ast.Stmts {
+// 	switch node := node.(type) {
+// 	case *ast.TypeDefStmt:
+// 		if original, exists := typeDefs[node.Name.Value]; exists {
+// 			a.error(&errs.DuplicateDefError{
+// 				Name:     node.Name.Value,
+// 				Original: original,
+// 				Node:     node,
+// 			})
+// 		} else {
+// 			typeDefs[node.Name.Value] = node
+// 			a.TypeEnv.Define(node.Name.Value, nil)
+// 		}
+// 	case *ast.ProcDefStmt:
+// 		if original, exists := procDefs[node.Name.Value]; exists {
+// 			a.error(&errs.DuplicateDefError{
+// 				Name:     node.Name.Value,
+// 				Original: original,
+// 				Node:     node,
+// 			})
+// 		} else {
+// 			procDefs[node.Name.Value] = node
+// 			a.Scope.Define(node.Name.Value, nil)
+// 		}
+// 	}
+// }
+
+// for name, stmt := range typeDefs {
+// 	typ, err := a.checker.ResolveType(stmt.Type)
+// 	if err != nil {
+// 		a.error(err)
+// 	}
+// 	a.TypeEnv.Define(name, typ)
+// }
+
+// for name, stmt := range procDefs {
+// 	out, err := a.checker.ResolveExpr(stmt.Body)
+// 	if err != nil {
+// 		a.error(err)
+// 	}
+// 	a.Scope.Define(name, &types.Proc{
+// 		In:  types.Empty,
+// 		Out: out,
+// 	})
+// }
+// }
+
+// func (a *Analyzer) resolveImport(name string) *pkg.Package {
+// 	switch name {
+// 	case "List":
+// 		return pkg.ListPkg
+// 	default:
+// 		return nil
+// 	}
+// }
+
+// func (a *Analyzer) import_(pkg *pkg.Package) {
+// 	a.Imports = append(a.Imports, pkg)
+// 	a.TypeEnv.Import(pkg.Name, pkg.TypEnv)
+// 	a.Scope.Import(pkg.Name, pkg.Scope)
+// }
+
+func New(file *parser.File, ast *ast.File) *Semantics {
+	return &Semantics{
+		file:    file.Name,
+		ast:     ast,
+		checker: NewChecker(pkg.NewScope(), types.NewEnvironment()),
 	}
-	a.checker = NewChecker(a.Scope, a.TypeEnv)
-
-	return a
 }

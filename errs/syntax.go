@@ -7,13 +7,9 @@ import (
 	"github.com/CanPacis/go-i18n/parser/token"
 )
 
-type position interface {
-	Position() (start token.Position, end token.Position)
-}
-
 type SyntaxError struct {
 	Reasons []error
-	File    string
+	file    string
 }
 
 func (e *SyntaxError) Position() (start token.Position, end token.Position) {
@@ -22,7 +18,7 @@ func (e *SyntaxError) Position() (start token.Position, end token.Position) {
 	}
 
 	reason := e.Reasons[0]
-	p, ok := reason.(position)
+	p, ok := reason.(Positioner)
 	if !ok {
 		return
 	}
@@ -41,6 +37,17 @@ func (e *SyntaxError) Error() string {
 
 func (e *SyntaxError) Unwrap() []error {
 	return e.Reasons
+}
+
+func (e *SyntaxError) File() string {
+	return e.file
+}
+
+func NewSyntaxError(reasons []error, file string) *SyntaxError {
+	return &SyntaxError{
+		Reasons: reasons,
+		file:    file,
+	}
 }
 
 type UnexpectedTokenError struct {

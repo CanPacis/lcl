@@ -9,6 +9,16 @@ import (
 	"github.com/CanPacis/go-i18n/parser"
 )
 
+func FormatError(err error) string {
+	tle, ok := err.(errs.TopLevelError)
+	if !ok {
+		return err.Error()
+	}
+
+	start, end := tle.Position()
+	return fmt.Sprintf("%s at %s - %s in %s\n", tle.Error(), start.String(), end.String(), tle.File())
+}
+
 func main() {
 	name := "test.lcl"
 	r, _ := os.Open(name)
@@ -16,27 +26,16 @@ func main() {
 
 	p := parser.New(file)
 
-	ast, err := p.ParseFile()
+	ast, err := p.Parse()
 	if err != nil {
-		e := err.(*errs.SyntaxError)
-		start, end := e.Position()
-		fmt.Printf("%s at %s - %s in %s\n", e.Error(), start.String(), end.String(), e.File)
+		fmt.Println(FormatError(err))
 		os.Exit(1)
 	}
 
-	anly := analyzer.New(file, ast)
-	err = anly.Run()
+	sc := analyzer.New(file, ast)
+	err = sc.Scan()
 	if err != nil {
-		e := err.(*errs.SemanticError)
-		start, end := e.Position()
-		fmt.Printf("%s at %s - %s in %s\n", e.Error(), start.String(), end.String(), e.File)
+		fmt.Println(FormatError(err))
 		os.Exit(1)
 	}
-
-	exports := anly.Scope.Exports()
-	fmt.Println(exports["test"].Name())
-	// fmt.Println(anly.TypeEnv.Lookup("User", ""))
-	// fmt.Println(anly.TypeEnv.Exports())
-	// fmt.Println(anly.Scope.Lookup("string", ""))
-	// fmt.Println(anly.Scope.Exports())
 }

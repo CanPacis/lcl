@@ -1,6 +1,10 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 type Type interface {
 	Name() string
@@ -22,34 +26,6 @@ var Time = &constant{"time"}
 var Self = &constant{"self"}
 var Empty = &constant{"empty"}
 
-// type String struct {
-// }
-
-// func (t *String) Name() string {
-// 	return "string"
-// }
-
-// type Int struct {
-// }
-
-// func (t *Int) Name() string {
-// 	return "int"
-// }
-
-// type Float struct {
-// }
-
-// func (t *Float) Name() string {
-// 	return "float"
-// }
-
-// type Bool struct {
-// }
-
-// func (t *Bool) Name() string {
-// 	return "bool"
-// }
-
 type List struct {
 	Type Type
 }
@@ -58,25 +34,45 @@ func (t *List) Name() string {
 	return fmt.Sprintf("%s[]", t.Type.Name())
 }
 
-// type Time struct {
-// }
-
-// func (t *Time) Name() string {
-// 	return "time"
-// }
-
-type Struct struct {
-	Fields map[string]Type
+func NewList(t Type) *List {
+	return &List{
+		Type: t,
+	}
 }
+
+type TypePair struct {
+	Index int
+	Name  string
+	Type  Type
+}
+
+func NewPair(i int, name string, typ Type) TypePair {
+	return TypePair{
+		Index: i,
+		Name:  name,
+		Type:  typ,
+	}
+}
+
+type Struct []TypePair
 
 func (t *Struct) Name() string {
-	return "struct"
+	fields := []string{}
+
+	for _, pair := range *t {
+		fields = append(fields, fmt.Sprintf("(%d %s %s)", pair.Index, pair.Name, pair.Type.Name()))
+	}
+
+	return fmt.Sprintf("struct {%s}", strings.Join(fields, " "))
 }
 
-func NewStruct(fields map[string]Type) *Struct {
-	return &Struct{
-		Fields: fields,
-	}
+func NewStruct(pairs ...TypePair) *Struct {
+	s := Struct(pairs)
+	slices.SortFunc(s, func(a, b TypePair) int {
+		return a.Index - b.Index
+	})
+
+	return &s
 }
 
 type Proc struct {
@@ -85,5 +81,5 @@ type Proc struct {
 }
 
 func (t *Proc) Name() string {
-	return fmt.Sprintf("proc %s -> %s", t.In.Name(), t.Out.Name())
+	return fmt.Sprintf("proc (%s -> %s)", t.In.Name(), t.Out.Name())
 }

@@ -2,7 +2,6 @@ package errs
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/parser/token"
@@ -10,7 +9,7 @@ import (
 
 type SemanticError struct {
 	Reasons []error
-	File    string
+	file    string
 }
 
 func (e *SemanticError) Position() (start token.Position, end token.Position) {
@@ -19,7 +18,7 @@ func (e *SemanticError) Position() (start token.Position, end token.Position) {
 	}
 
 	reason := e.Reasons[0]
-	p, ok := reason.(position)
+	p, ok := reason.(Positioner)
 	if !ok {
 		return
 	}
@@ -40,6 +39,17 @@ func (e *SemanticError) Unwrap() []error {
 	return e.Reasons
 }
 
+func (e *SemanticError) File() string {
+	return e.file
+}
+
+func NewSemanticError(reasons []error, file string) *SemanticError {
+	return &SemanticError{
+		Reasons: reasons,
+		file:    file,
+	}
+}
+
 type Resolvable string
 
 const (
@@ -50,6 +60,20 @@ const (
 	CONST  Resolvable = "const"
 )
 
+const (
+	Unresolved = "unresolved"
+	Duplicate  = "duplicate definition"
+	Type       = "type error"
+
+	NotComparable = "expressions are not comparable"
+	NotInferrable = "expression's type cannot be inferred"
+	PredIsNonBool = "predicate expression must be a bool"
+	PredIsInvalid = "both sides of the predicate must be the same type"
+	NotCallable   = "expression is not callable"
+	NotAssignable = "expression is not assignable"
+	NotIndexable  = "expression is not indexable"
+)
+
 type ResolveError struct {
 	Value string
 	Kind  Resolvable
@@ -57,11 +81,31 @@ type ResolveError struct {
 }
 
 func (e *ResolveError) Error() string {
-	return fmt.Sprintf("unresolved %s: %s", e.Kind, e.Value)
+	return fmt.Sprintf("%s %s: %s", Unresolved, e.Kind, e.Value)
 }
 
 func (e *ResolveError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
+}
+
+type TypeError struct {
+	Message string
+	Node    ast.Node
+}
+
+func (e *TypeError) Error() string {
+	return fmt.Sprintf("%s: %s", Type, e.Message)
+}
+
+func (e *TypeError) Position() (start token.Position, end token.Position) {
+	return e.Node.Start(), e.Node.End()
+}
+
+func NewTypeError(node ast.Node, message string, a ...any) *TypeError {
+	return &TypeError{
+		Message: fmt.Sprintf(message, a...),
+		Node:    node,
+	}
 }
 
 type DuplicateDefError struct {
@@ -72,7 +116,8 @@ type DuplicateDefError struct {
 
 func (e *DuplicateDefError) Error() string {
 	return fmt.Sprintf(
-		"duplicate definition: '%s' is already defined here %s - %s",
+		"%s: '%s' is already defined here %s - %s",
+		Duplicate,
 		e.Name,
 		e.Original.Start(),
 		e.Original.End(),
@@ -83,20 +128,20 @@ func (e *DuplicateDefError) Position() (start token.Position, end token.Position
 	return e.Node.Start(), e.Node.End()
 }
 
-type FieldDeclError struct {
-	Excess  []string
-	Missing []string
-	Entry   ast.Entry
-}
+// type FieldDeclError struct {
+// 	Excess  []string
+// 	Missing []string
+// 	Entry   ast.Entry
+// }
 
-func (e *FieldDeclError) Error() string {
-	return fmt.Sprintf(
-		"field declaration: missing %s and excess %s",
-		strings.Join(e.Missing, " "),
-		strings.Join(e.Excess, " "),
-	)
-}
+// func (e *FieldDeclError) Error() string {
+// 	return fmt.Sprintf(
+// 		"field declaration: missing %s and excess %s",
+// 		strings.Join(e.Missing, " "),
+// 		strings.Join(e.Excess, " "),
+// 	)
+// }
 
-func (e *FieldDeclError) Position() (start token.Position, end token.Position) {
-	return e.Entry.Start(), e.Entry.End()
-}
+// func (e *FieldDeclError) Position() (start token.Position, end token.Position) {
+// 	return e.Entry.Start(), e.Entry.End()
+// }

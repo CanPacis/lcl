@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/CanPacis/go-i18n/errs"
 	pkg "github.com/CanPacis/go-i18n/package"
@@ -16,11 +15,20 @@ const (
 	GLOBAL ResolveContext = iota
 	PROC_BODY
 	TEMPLATE_EXPR
+
+	PROC
+	TYPE
+	CONST
 )
 
 type Checker struct {
 	env   *types.Environment
 	scope *pkg.Scope
+
+	types map[string]*ast.TypeDefStmt
+	procs map[string]*ast.ProcDefStmt
+
+	self types.Type
 
 	frame []ResolveContext
 	init  bool
@@ -42,11 +50,14 @@ func (c *Checker) End() {
 	c.frame = c.frame[:len(c.frame)-1]
 }
 
-func (c Checker) ContextFrame() ResolveContext {
+func (c Checker) Context() ResolveContext {
 	return c.frame[len(c.frame)-1]
 }
 
 func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
+	c.Begin(TYPE)
+	defer c.End()
+
 	err := &errs.ResolveError{
 		Value: "unknown",
 		Kind:  errs.TYPE,
@@ -69,24 +80,25 @@ func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
 
 		err.Value = expr.Left.Value + "." + expr.Right.Value
 	case *ast.StructLitExpr:
-		fields := map[string]types.Type{}
+		pairs := []types.TypePair{}
 
 		for _, field := range expr.List {
 			typ, err := c.ResolveType(field.Type)
 			if err != nil {
 				return types.Empty, err
 			}
-			fields[field.Name.Value] = typ
+
+			pairs = append(pairs, types.NewPair(field.Index, field.Name.Value, typ))
 		}
 
-		return types.NewStruct(fields), nil
+		return types.NewStruct(pairs...), nil
 	case *ast.ListTypeExpr:
 		typ, err := c.ResolveType(expr.Type)
 		if err != nil {
 			return types.Empty, err
 		}
 
-		return &types.List{Type: typ}, nil
+		return types.NewList(typ), nil
 	default:
 		return types.Empty, errors.New("???")
 	}
@@ -95,9 +107,20 @@ func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
 }
 
 func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
+	var kind errs.Resolvable
+
+	switch c.Context() {
+	case PROC:
+		kind = errs.PROC
+	case CONST:
+		kind = errs.CONST
+	default:
+		kind = errs.CONST
+	}
+
 	err := &errs.ResolveError{
 		Value: "unknown",
-		Kind:  errs.CONST,
+		Kind:  kind,
 		Node:  expr,
 	}
 
@@ -105,17 +128,81 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	case *ast.SelfExpr:
 		return types.Self, nil
 	case *ast.BinaryExpr:
-		fmt.Println(expr.Left, expr.Right)
+		left, err := c.ResolveExpr(expr.Left)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		right, err := c.ResolveExpr(expr.Right)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		if !c.Comparable(left, right) {
+			if (left == types.Self || right == types.Self) && c.Context() == PROC_BODY {
+				return types.Empty, errs.NewTypeError(expr, "%s: self expression is ambigious", errs.NotInferrable)
+			}
+			return types.Empty, errs.NewTypeError(expr, "%s: %s %s", errs.NotComparable, left.Name(), right.Name())
+		}
 		return types.Bool, nil
 	case *ast.TernaryExpr:
-		fmt.Println(expr.Predicate, expr.Left, expr.Right)
-		return types.Bool, nil
+		pred, err := c.ResolveExpr(expr.Predicate)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		left, err := c.ResolveExpr(expr.Left)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		right, err := c.ResolveExpr(expr.Right)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		if pred != types.Bool {
+			return types.Empty, errs.NewTypeError(expr, "%s, got %s", errs.PredIsNonBool, pred.Name())
+		}
+
+		if !c.Convertible(left, right) {
+			return types.Empty, errs.NewTypeError(expr, "%s, got %s and %s", errs.PredIsInvalid, left.Name(), right.Name())
+		}
+
+		return left, nil
 	case *ast.ProcCallExpr:
-		return types.Empty, errors.ErrUnsupported
+		c.Begin(PROC)
+		proc, err := c.ResolveExpr(expr.Proc)
+		if err != nil {
+			return types.Empty, err
+		}
+		c.End()
+
+		callable, ok := proc.(*types.Proc)
+		if !ok {
+			return types.Empty, errs.NewTypeError(expr.Proc, errs.NotCallable)
+		}
+
+		param, err := c.ResolveExpr(expr.Param)
+		if err != nil {
+			return types.Empty, err
+		}
+
+		if !c.Assignable(callable.In, param) {
+			return types.Empty, errs.NewTypeError(
+				expr.Param,
+				"%s, proc expects a '%s' but got '%s'",
+				errs.NotAssignable,
+				callable.In.Name(),
+				param.Name(),
+			)
+		}
+
+		return callable.Out, nil
 	case *ast.MemberExpr:
-		return types.Empty, errors.ErrUnsupported
+		return types.Empty, &errs.UnsupportedError{Node: expr}
 	case *ast.IndexExpr:
-		return types.Empty, errors.ErrUnsupported
+		return types.Empty, &errs.UnsupportedError{Node: expr}
 	case *ast.GroupExpr:
 		return c.ResolveExpr(expr.Expr)
 	case *ast.IdentExpr:
@@ -131,27 +218,71 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		// TODO: create a new type for templates?
 		return types.String, nil
 	case *ast.NumberLitExpr:
-		return types.Int, nil
+		isInt := expr.Value == float64(int(expr.Value))
+		if isInt {
+			return types.Int, nil
+		}
+		return types.Float, nil
 	case *ast.EmptyExpr:
 		return types.Empty, nil
-	default:
-		return types.Empty, errors.New("???")
 	}
 
 	return types.Empty, err
 }
 
-func (c *Checker) Assignable(left, right types.Type) error {
-	if left == types.Self {
-		return nil
+func (c *Checker) Comparable(left, right types.Type) bool {
+	return left.Name() == right.Name()
+}
+
+func (c *Checker) Convertible(left, right types.Type) bool {
+	return left.Name() == right.Name()
+}
+
+func (c *Checker) Assignable(left, right types.Type) bool {
+	if c.Context() == PROC_BODY && right == types.Self {
+		c.self = left
+		return true
 	}
-	fmt.Println(left.Name(), right.Name())
-	return errors.ErrUnsupported
+
+	return left.Name() == right.Name()
+}
+
+func (c *Checker) RegisterType(node *ast.TypeDefStmt) error {
+	if original, exists := c.types[node.Name.Value]; exists {
+		return &errs.DuplicateDefError{
+			Name:     node.Name.Value,
+			Original: original,
+			Node:     node,
+		}
+	}
+
+	c.types[node.Name.Value] = node
+	c.env.Define(node.Name.Value, types.Empty)
+	return nil
+}
+
+func (c *Checker) RegisterProc(node *ast.ProcDefStmt) error {
+	if original, exists := c.procs[node.Name.Value]; exists {
+		return &errs.DuplicateDefError{
+			Name:     node.Name.Value,
+			Original: original,
+			Node:     node,
+		}
+	}
+
+	c.procs[node.Name.Value] = node
+	c.scope.Define(node.Name.Value, types.Empty)
+	return nil
 }
 
 func NewChecker(scope *pkg.Scope, env *types.Environment) *Checker {
-	return &Checker{
+	c := &Checker{
 		scope: scope,
 		env:   env,
+		self:  types.Empty,
+		types: make(map[string]*ast.TypeDefStmt),
+		procs: make(map[string]*ast.ProcDefStmt),
 	}
+	c.Init()
+	return c
 }

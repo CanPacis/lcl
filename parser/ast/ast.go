@@ -214,8 +214,9 @@ type StructLitExpr struct {
 
 type TypePair struct {
 	Node
-	Name *IdentExpr
-	Type TypeExpr
+	Index int
+	Name  *IdentExpr
+	Type  TypeExpr
 }
 
 func (e *SelfExpr) exprNode()        {}

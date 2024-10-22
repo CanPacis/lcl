@@ -96,7 +96,7 @@ func (p *Parser) seq(open, close token.Kind) iter.Seq[int] {
 	}
 }
 
-func (p *Parser) ParseFile() (*ast.File, error) {
+func (p *Parser) Parse() (*ast.File, error) {
 	p.ctx.Init()
 
 	start := p.current
@@ -119,10 +119,7 @@ func (p *Parser) ParseFile() (*ast.File, error) {
 	}
 
 	if len(p.errors) != 0 {
-		return nil, &errs.SyntaxError{
-			Reasons: p.errors,
-			File:    p.file,
-		}
+		return nil, errs.NewSyntaxError(p.errors, p.file)
 	}
 
 	return &ast.File{
@@ -131,19 +128,6 @@ func (p *Parser) ParseFile() (*ast.File, error) {
 		Imports: imports,
 		Stmts:   stmts,
 	}, nil
-}
-
-func (p *Parser) Parse() (ast.Node, error) {
-	node := p.parseStmt()
-
-	if len(p.errors) != 0 {
-		return nil, &errs.SyntaxError{
-			Reasons: p.errors,
-			File:    p.file,
-		}
-	}
-
-	return node, nil
 }
 
 // Statements
@@ -235,7 +219,7 @@ func (p *Parser) parseProcDefStmt() *ast.ProcDefStmt {
 	body := p.parseExpr()
 
 	return &ast.ProcDefStmt{
-		Node: ast.NewNode(start.Start, p.current.End),
+		Node: ast.NewNode(start.Start, body.End()),
 		Name: name,
 		Body: body,
 	}
@@ -676,8 +660,10 @@ func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 	start := p.current
 
 	list := []*ast.TypePair{}
-	for range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
-		list = append(list, p.parseTypePair())
+	for i := range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
+		pair := p.parseTypePair()
+		pair.Index = i
+		list = append(list, pair)
 	}
 
 	return &ast.StructLitExpr{
@@ -705,4 +691,37 @@ func New(file *File) *Parser {
 	}
 	parser.advance()
 	return parser
+}
+
+func ParseStmt(file *File) (ast.Stmt, error) {
+	p := New(file)
+	node := p.parseStmt()
+
+	if len(p.errors) != 0 {
+		return nil, errs.NewSyntaxError(p.errors, p.file)
+	}
+
+	return node, nil
+}
+
+func ParseExpr(file *File) (ast.Expr, error) {
+	p := New(file)
+	node := p.parseExpr()
+
+	if len(p.errors) != 0 {
+		return nil, errs.NewSyntaxError(p.errors, p.file)
+	}
+
+	return node, nil
+}
+
+func ParseTypeExpr(file *File) (ast.TypeExpr, error) {
+	p := New(file)
+	node := p.parseTypeExpr()
+
+	if len(p.errors) != 0 {
+		return nil, errs.NewSyntaxError(p.errors, p.file)
+	}
+
+	return node, nil
 }

@@ -19,8 +19,8 @@ func (s *Scope) Import(name string, scope *Scope) {
 	s.imports[name] = scope
 }
 
-func (s *Scope) Define(name string, obj types.Type) {
-	s.objects[name] = obj
+func (s *Scope) Define(name string, typ types.Type) {
+	s.objects[name] = typ
 }
 
 func (s Scope) Lookup(name, prefix string) (types.Type, bool) {
@@ -51,9 +51,15 @@ func NewScope() *Scope {
 		imports: make(map[string]*Scope),
 		objects: make(map[string]types.Type),
 		builtin: map[string]types.Type{
+			"true":  types.Bool,
+			"false": types.Bool,
 			"itoa": &types.Proc{
 				In:  types.Int,
 				Out: types.String,
+			},
+			"year": &types.Proc{
+				In:  types.Time,
+				Out: types.Int,
 			},
 		},
 	}
