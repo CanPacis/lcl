@@ -71,14 +71,13 @@ const (
 
 	IDENT
 	STRING
-	TEMPLATE_LIT
+	TEMPLATE
 	NUMBER
 
 	// Delimeter
 	KEYWORD
 
-	FOR
-	IN
+	DECLARE
 	IMPORT
 	FN
 	TYPE
@@ -122,15 +121,14 @@ var tokenMap = map[Kind]string{
 
 	LITERAL: "literal",
 
-	IDENT:        "identifier",
-	STRING:       "string literal",
-	TEMPLATE_LIT: "template literal",
-	NUMBER:       "number literal",
+	IDENT:    "identifier",
+	STRING:   "string literal",
+	TEMPLATE: "template literal",
+	NUMBER:   "number literal",
 
 	KEYWORD: "keyword",
 
-	FOR:     "for",
-	IN:      "in",
+	DECLARE: "declare",
 	IMPORT:  "import",
 	FN:      "fn",
 	TYPE:    "type",

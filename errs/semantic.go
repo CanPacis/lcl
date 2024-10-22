@@ -58,7 +58,7 @@ const (
 	TARGET Resolvable = "target"
 	TAG    Resolvable = "tag"
 	TYPE   Resolvable = "type"
-	PROC   Resolvable = "proc"
+	FN     Resolvable = "fn"
 	CONST  Resolvable = "const"
 )
 

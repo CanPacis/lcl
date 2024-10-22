@@ -108,15 +108,14 @@ func TestAlphanumeric(t *testing.T) {
 	tests := CaseList{
 		{
 			skipsWhitespace: true,
-			Input:           "for in import fn   type section              identifier",
+			Input:           "declare import fn type section identifier",
 			Expected: []Expectation{
-				Exp(token.FOR, "for", 1, 1, 1, 4),
-				Exp(token.IN, "in", 1, 5, 1, 7),
-				Exp(token.IMPORT, "import", 1, 8, 1, 14),
-				Exp(token.FN, "fn", 1, 15, 1, 19),
-				Exp(token.TYPE, "type", 1, 20, 1, 24),
-				Exp(token.SECTION, "section", 1, 25, 1, 32),
-				Exp(token.IDENT, "identifier", 1, 46, 1, 56),
+				Exp(token.DECLARE, "declare", 1, 1, 1, 8),
+				Exp(token.IMPORT, "import", 1, 9, 1, 15),
+				Exp(token.FN, "fn", 1, 16, 1, 18),
+				Exp(token.TYPE, "type", 1, 19, 1, 23),
+				Exp(token.SECTION, "section", 1, 24, 1, 31),
+				Exp(token.IDENT, "identifier", 1, 32, 1, 42),
 			},
 		},
 	}
@@ -147,7 +146,7 @@ func TestString(t *testing.T) {
 		{
 			Input: "`template string`",
 			Expected: []Expectation{
-				Exp(token.TEMPLATE_LIT, "template string", 1, 1, 1, 18),
+				Exp(token.TEMPLATE, "template string", 1, 1, 1, 18),
 			},
 		},
 		{
@@ -159,7 +158,7 @@ func TestString(t *testing.T) {
 		{
 			Input: "`template with { expression \"\" `` }`",
 			Expected: []Expectation{
-				Exp(token.TEMPLATE_LIT, "template with { expression \"\" `` }", 1, 1, 1, 37),
+				Exp(token.TEMPLATE, "template with { expression \"\" `` }", 1, 1, 1, 37),
 			},
 		},
 		{

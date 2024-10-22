@@ -53,11 +53,11 @@ func NewScope() *Scope {
 		builtin: map[string]types.Type{
 			"true":  types.Bool,
 			"false": types.Bool,
-			"itoa": &types.Proc{
+			"itoa": &types.Fn{
 				In:  types.Int,
 				Out: types.String,
 			},
-			"year": &types.Proc{
+			"year": &types.Fn{
 				In:  types.Time,
 				Out: types.Int,
 			},

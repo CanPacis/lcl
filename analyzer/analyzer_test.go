@@ -2,6 +2,7 @@ package analyzer_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -58,6 +59,6 @@ func init() {
 		split := strings.Split(entry, "\n")
 		name := strings.TrimSpace(split[0])
 		content := strings.Join(split[1:], "\n")
-		Test[name] = parser.NewFile("test.lcl", bytes.NewBuffer([]byte(content)))
+		Test[name] = parser.NewFile(fmt.Sprintf("%s.lcl", name), bytes.NewBuffer([]byte(content)))
 	}
 }

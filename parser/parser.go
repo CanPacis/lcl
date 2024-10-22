@@ -61,8 +61,11 @@ func (p *Parser) expect(kind ...token.Kind) token.Token {
 			case SEQUENCE:
 				details = "you might have forgotten a closing token"
 			case STATEMENT:
-				if p.current.Kind == token.FOR || p.current.Kind == token.IMPORT {
+				switch p.current.Kind {
+				case token.DECLARE, token.IMPORT:
 					details = fmt.Sprintf("%s is a top level statement, try moving it up", p.current.Kind.String())
+					// case token.IDENT:
+					// 	details = "only section statements and fn definitions are valid here"
 				}
 			}
 
@@ -102,7 +105,7 @@ func (p *Parser) Parse() (*ast.File, error) {
 	start := p.current
 	p.skip()
 
-	fr := p.parseForStmt()
+	fr := p.parseDeclStmt()
 	p.skip()
 
 	imports := []*ast.ImportStmt{}
@@ -124,7 +127,7 @@ func (p *Parser) Parse() (*ast.File, error) {
 
 	return &ast.File{
 		Node:    ast.NewNode(start.Start, p.current.End),
-		For:     fr,
+		Decl:    fr,
 		Imports: imports,
 		Stmts:   stmts,
 	}, nil
@@ -151,8 +154,10 @@ func (p *Parser) parseStmt() ast.Stmt {
 	}
 }
 
-func (p *Parser) parseForStmt() *ast.ForStmt {
-	start := p.expect(token.FOR)
+func (p *Parser) parseDeclStmt() *ast.DeclStmt {
+	start := p.expect(token.DECLARE)
+	p.skip()
+	name := p.parseIdentExpr()
 	p.skip()
 
 	list := []*ast.IdentExpr{}
@@ -160,15 +165,10 @@ func (p *Parser) parseForStmt() *ast.ForStmt {
 		list = append(list, p.parseIdentExpr())
 	}
 
-	p.skip()
-	p.expect(token.IN)
-	p.skip()
-	in := p.parseIdentExpr()
-
-	return &ast.ForStmt{
-		Stmt: ast.NewStmtNode(start.Start, in.End()),
+	return &ast.DeclStmt{
+		Stmt: ast.NewStmtNode(start.Start, p.current.End),
+		Name: name,
 		List: list,
-		In:   in,
 	}
 }
 
@@ -217,16 +217,7 @@ func (p *Parser) parseFnDefStmt() *ast.FnDefStmt {
 	params := []*ast.Parameter{}
 	if p.current.Kind == token.LEFT_PARENS {
 		for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-			name := p.parseIdentExpr()
-			p.expect(token.DOUBLE_COLON)
-			typ := p.parseTypeExpr()
-
-			params = append(params, &ast.Parameter{
-				Node:  ast.NewNode(name.Start(), typ.End()),
-				Index: i,
-				Name:  name,
-				Type:  typ,
-			})
+			params = append(params, p.parseParameter(i))
 		}
 	}
 
@@ -249,16 +240,11 @@ func (p *Parser) parseSectionStmt() *ast.SectionStmt {
 	name := p.parseIdentExpr()
 	p.skip()
 
-	p.expect(token.LEFT_CURLY_BRACE)
-	p.skip()
-
 	list := []ast.Entry{}
 
-	for p.current.Kind != token.EOF && p.current.Kind != token.RIGHT_CURLY_BRACE {
+	for range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
 		list = append(list, p.parseEntry())
-		p.skip()
 	}
-	p.expect(token.RIGHT_CURLY_BRACE)
 
 	return &ast.SectionStmt{
 		Stmt: ast.NewStmtNode(start.Start, p.current.End),
@@ -273,87 +259,65 @@ func (p *Parser) parseEntry() ast.Entry {
 	p.ctx.Begin(ENTRY)
 	defer p.ctx.End()
 
-	switch p.current.Kind {
-	// case token.KEY:
-	// 	return p.parseKeyEntry()
-	// case token.TEMPLATE:
-	// return p.parseTemplateEntry()
-	case token.SECTION:
+	if p.current.Kind == token.SECTION {
 		return p.parseSectionStmt()
-	default:
-		p.expect()
-		return &ast.EmptyEntry{
-			Node: ast.NewNode(p.current.Start, p.current.End),
+	}
+
+	isTemplate := false
+	isPartitioned := false
+	name := p.parseIdentExpr()
+
+	params := []*ast.Parameter{}
+	if p.current.Kind == token.LEFT_PARENS {
+		isTemplate = true
+
+		for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
+			params = append(params, p.parseParameter(i))
 		}
 	}
-}
 
-func (p *Parser) parseKeyEntry() *ast.KeyEntry {
-	// start := p.expect(token.KEY)
-	start := p.advance()
-	p.skip()
-	name := p.parseIdentExpr()
+	if p.current.Kind == token.STAR {
+		isPartitioned = true
+		p.advance()
+	}
 	p.skip()
 
-	fields := []*ast.StringField{}
+	fields := []ast.Field{}
 	for range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
-		fields = append(fields, p.parseStringField())
+		fields = append(fields, p.parseField())
+	}
+
+	if isTemplate {
+		return &ast.TemplateEntry{
+			Node:        ast.NewNode(name.Start(), p.current.End),
+			Partitioned: isPartitioned,
+			Name:        name,
+			Fields:      fields,
+			Params:      params,
+		}
 	}
 
 	return &ast.KeyEntry{
-		Node:   ast.NewNode(start.Start, p.current.End),
+		Node:   ast.NewNode(name.Start(), p.current.End),
 		Name:   name,
 		Fields: fields,
 	}
 }
 
-func (p *Parser) parseStringField() *ast.StringField {
+func (p *Parser) parseField() ast.Field {
 	tag := p.parseIdentExpr()
 	p.skip()
-	value := p.parseStringExpr()
 
-	return &ast.StringField{
-		Node:  ast.NewNode(tag.Start(), value.End()),
-		Tag:   tag,
-		Value: value,
-	}
-}
-
-func (p *Parser) parseTemplateEntry() *ast.TemplateEntry {
-	partitioned := false
-
-	// start := p.expect(token.TEMPLATE)
-	start := p.advance()
-	if p.current.Kind == token.STAR {
-		partitioned = true
-		p.advance()
-	}
-	p.skip()
-	name := p.parseIdentExpr()
-	p.skip()
-
-	fields := []*ast.TemplateField{}
-	for range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
-		fields = append(fields, p.parseTemplateField())
+	if p.current.Kind == token.STRING {
+		value := p.parseStringExpr()
+		return &ast.StringField{
+			Node:  ast.NewNode(tag.Start(), value.End()),
+			Tag:   tag,
+			Value: value,
+		}
 	}
 
-	p.expect(token.DOUBLE_COLON)
-	typ := p.parseTypeExpr()
-
-	return &ast.TemplateEntry{
-		Node:        ast.NewNode(start.Start, p.current.End),
-		Partitioned: partitioned,
-		Name:        name,
-		Fields:      fields,
-		Type:        typ,
-	}
-}
-
-func (p *Parser) parseTemplateField() *ast.TemplateField {
-	tag := p.parseIdentExpr()
-	p.skip()
 	value := p.parseTemplateExpr()
-
 	return &ast.TemplateField{
 		Node:  ast.NewNode(tag.Start(), value.End()),
 		Tag:   tag,
@@ -413,7 +377,7 @@ func (p *Parser) parseBinaryExpr() ast.Expr {
 	var lhs ast.Expr
 
 	switch p.current.Kind {
-	case token.STRING, token.TEMPLATE_LIT, token.NUMBER, token.DOT:
+	case token.STRING, token.TEMPLATE, token.NUMBER, token.DOT:
 		lhs = p.parseBasicExpr()
 	default:
 		lhs = p.parseCallExpr()
@@ -441,16 +405,15 @@ func (p *Parser) parseCallExpr() ast.Expr {
 
 	switch p.current.Kind {
 	case token.LEFT_PARENS:
-		p.advance()
-		p.skip()
-		param := p.parseExpr()
-		p.skip()
-		p.expect(token.RIGHT_PARENS)
+		args := []ast.Expr{}
+		for range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
+			args = append(args, p.parseExpr())
+		}
 
 		return &ast.CallExpr{
-			Node:  ast.NewNode(member.Start(), p.current.End),
-			Fn:    member,
-			Param: param,
+			Node: ast.NewNode(member.Start(), p.current.End),
+			Fn:   member,
+			Args: args,
 		}
 	case token.LEFT_SQUARE_BRACKET:
 		p.advance()
@@ -527,14 +490,14 @@ func (p *Parser) parseBasicExpr() ast.Expr {
 	switch p.current.Kind {
 	case token.STRING:
 		return p.parseStringExpr()
-	case token.TEMPLATE_LIT:
+	case token.TEMPLATE:
 		return p.parseTemplateExpr()
 	case token.NUMBER:
 		return p.parseNumberExpr()
 	case token.DOT:
 		return p.parseSelfExpr()
 	default:
-		p.expect(token.STRING, token.TEMPLATE_LIT, token.NUMBER, token.DOT)
+		p.expect(token.STRING, token.TEMPLATE, token.NUMBER, token.DOT)
 		return &ast.EmptyExpr{
 			Node: ast.NewNode(p.current.Start, p.current.End),
 		}
@@ -681,9 +644,7 @@ func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 
 	list := []*ast.TypePair{}
 	for i := range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
-		pair := p.parseTypePair()
-		pair.Index = i
-		list = append(list, pair)
+		list = append(list, p.parseTypePair(i))
 	}
 
 	return &ast.StructLitExpr{
@@ -692,14 +653,28 @@ func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 	}
 }
 
-func (p *Parser) parseTypePair() *ast.TypePair {
+func (p *Parser) parseTypePair(i int) *ast.TypePair {
 	name := p.expect(token.IDENT)
 	p.skip()
 	typ := p.parseTypeExpr()
 
 	return &ast.TypePair{
-		Name: ast.NewIdent(name),
-		Type: typ,
+		Name:  ast.NewIdent(name),
+		Index: i,
+		Type:  typ,
+	}
+}
+
+func (p *Parser) parseParameter(i int) *ast.Parameter {
+	name := p.parseIdentExpr()
+	p.expect(token.DOUBLE_COLON)
+	typ := p.parseTypeExpr()
+
+	return &ast.Parameter{
+		Node:  ast.NewNode(name.Start(), typ.End()),
+		Index: i,
+		Name:  name,
+		Type:  typ,
 	}
 }
 

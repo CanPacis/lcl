@@ -15,8 +15,7 @@ const eof rune = -1
 
 var (
 	keywords = map[string]token.Kind{
-		"for":     token.FOR,
-		"in":      token.IN,
+		"declare": token.DECLARE,
 		"import":  token.IMPORT,
 		"fn":      token.FN,
 		"type":    token.TYPE,
@@ -95,7 +94,7 @@ func (l *Lexer) token(kind token.Kind) token.Token {
 	raw := l.word()
 	literal := raw
 
-	if kind == token.STRING || kind == token.TEMPLATE_LIT {
+	if kind == token.STRING || kind == token.TEMPLATE {
 		literal = raw[1 : len(raw)-1]
 		literal = strings.ReplaceAll(literal, "\\\"", "\"")
 	}
@@ -347,7 +346,7 @@ func (l *Lexer) lexTemplateLit() token.Token {
 	l.advance()
 	tokens = append(tokens, l.token(token.UNKNOWN))
 	l.template = tokens
-	return joinTokens(tokens, token.TEMPLATE_LIT)
+	return joinTokens(tokens, token.TEMPLATE)
 }
 
 func (l *Lexer) lexSpace() token.Token {

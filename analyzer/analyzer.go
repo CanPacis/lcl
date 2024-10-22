@@ -31,13 +31,13 @@ func (s Semantics) Errors() error {
 }
 
 func (s Semantics) ScanName() string {
-	return s.ast.For.In.Value
+	return s.ast.Decl.Name.Value
 }
 
 func (s *Semantics) ScanTargets() []language.Tag {
 	targets := []language.Tag{}
 
-	for _, node := range s.ast.For.List {
+	for _, node := range s.ast.Decl.List {
 		tag, err := s.checker.RegisterTarget(node)
 		if err != nil {
 			s.error(err)
@@ -85,13 +85,13 @@ func (s *Semantics) ScanTypes() *types.Environment {
 	return s.checker.env
 }
 
-func (s *Semantics) ScanProcs() *pkg.Scope {
+func (s *Semantics) ScanFns() *pkg.Scope {
 	defs := map[string]*ast.FnDefStmt{}
 
 	for _, node := range s.ast.Stmts {
 		switch node := node.(type) {
 		case *ast.FnDefStmt:
-			if err := s.checker.RegisterProc(node); err != nil {
+			if err := s.checker.RegisterFn(node); err != nil {
 				s.error(err)
 			} else {
 				defs[node.Name.Value] = node
@@ -100,14 +100,14 @@ func (s *Semantics) ScanProcs() *pkg.Scope {
 	}
 
 	for name, def := range defs {
-		s.checker.Begin(PROC_BODY)
+		s.checker.Begin(FN_BODY)
 		typ, err := s.checker.ResolveExpr(def.Body)
 		if err != nil {
 			s.error(err)
 		}
 		s.checker.End()
 
-		s.checker.scope.Define(name, &types.Proc{
+		s.checker.scope.Define(name, &types.Fn{
 			In:  s.checker.self,
 			Out: typ,
 		})
@@ -122,13 +122,14 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 		Fields: make(map[language.Tag]string),
 	}
 
-	for _, field := range entry.Fields {
-		tag, err := s.checker.LookupTag(field.Tag)
-		if err != nil {
-			s.error(err)
-		}
-		key.Fields[tag] = field.Value.Value
-	}
+	// for _, field := range entry.Fields {
+	// tag, err := s.checker.LookupTag(field)
+	// if err != nil {
+	// 	s.error(err)
+	// }
+	// key.Fields[tag] = field.Value.Value
+	// }
+
 	for name, tag := range s.checker.tags {
 		_, ok := key.Fields[tag]
 		if !ok {
@@ -145,14 +146,14 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 }
 
 func (s *Semantics) extractTemplateEntry(entry *ast.TemplateEntry) *Template {
-	typ, err := s.checker.ResolveType(entry.Type)
-	if err != nil {
-		s.error(err)
-	}
+	// typ, err := s.checker.ResolveType(entry.Type)
+	// if err != nil {
+	// 	s.error(err)
+	// }
 
 	template := &Template{
-		Name:   entry.Name.Value,
-		Type:   typ,
+		Name: entry.Name.Value,
+		// Type:   typ,
 		Fields: make(map[string]int),
 	}
 

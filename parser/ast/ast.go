@@ -11,7 +11,7 @@ type Node interface {
 
 type File struct {
 	Node
-	For     *ForStmt
+	Decl    *DeclStmt
 	Imports []*ImportStmt
 	Stmts   []Stmt
 }
@@ -22,10 +22,10 @@ type Stmt interface {
 	stmtNode()
 }
 
-type ForStmt struct {
+type DeclStmt struct {
 	Stmt
+	Name *IdentExpr
 	List []*IdentExpr
-	In   *IdentExpr
 }
 
 type ImportStmt struct {
@@ -77,15 +77,16 @@ type Entry interface {
 type KeyEntry struct {
 	Node
 	Name   *IdentExpr
-	Fields []*StringField
+	Fields []Field
 }
 
 type TemplateEntry struct {
 	Node
 	Partitioned bool
 	Name        *IdentExpr
-	Fields      []*TemplateField
-	Type        TypeExpr
+	Fields      []Field
+	// Type        TypeExpr
+	Params []*Parameter
 }
 
 type EmptyEntry struct {
@@ -152,8 +153,8 @@ type TernaryExpr struct {
 
 type CallExpr struct {
 	Node
-	Fn    Expr
-	Param Expr
+	Fn   Expr
+	Args []Expr
 }
 
 type MemberExpr struct {

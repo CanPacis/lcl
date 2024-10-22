@@ -1,0 +1,18 @@
+#test: Fn0
+declare i18n (en)
+
+fn Year time.Year(.)
+fn(t::time.Time) Year time.Year(t)
+
+#test: Section0
+declare i18n (en) 
+
+section S {
+  K {
+    en "String"
+  }
+
+  T(t::string) {
+    en `Template`
+  }
+}

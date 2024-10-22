@@ -88,7 +88,7 @@ func TestLocalTypeAnalysis(t *testing.T) {
 			File: Test["TestLocalTypeAnalysis2"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
 				s.ScanTypes()
-				s.ScanProcs()
+				s.ScanFns()
 			},
 			Contains: errs.Duplicate,
 		},
@@ -96,7 +96,7 @@ func TestLocalTypeAnalysis(t *testing.T) {
 			File: Test["TestLocalTypeAnalysis3"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
 				s.ScanTypes()
-				s.ScanProcs()
+				s.ScanFns()
 			},
 			Contains: errs.Unresolved,
 		},
@@ -104,12 +104,12 @@ func TestLocalTypeAnalysis(t *testing.T) {
 			File: Test["TestLocalTypeAnalysis4"],
 			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
 				s.ScanTypes()
-				scope := s.ScanProcs()
+				scope := s.ScanFns()
 
 				exports := scope.Exports()
-				p1 := exports["p1"].(*types.Proc)
-				p2 := exports["p2"].(*types.Proc)
-				p3 := exports["p3"].(*types.Proc)
+				p1 := exports["p1"].(*types.Fn)
+				p2 := exports["p2"].(*types.Fn)
+				p3 := exports["p3"].(*types.Fn)
 
 				assert.Equal(types.Time, p1.In)
 				assert.Equal(types.String, p1.Out)
@@ -126,7 +126,7 @@ func TestLocalTypeAnalysis(t *testing.T) {
 			File: Test["TestLocalTypeAnalysis5"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
 				s.ScanTypes()
-				s.ScanProcs()
+				s.ScanFns()
 			},
 			Contains: errs.NotInferrable,
 		},
@@ -142,7 +142,7 @@ func TestForeignTypeAnalysis(t *testing.T) {
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
 				s.ScanImports()
 				s.ScanTypes()
-				s.ScanProcs()
+				s.ScanFns()
 			},
 		},
 	}
@@ -157,7 +157,7 @@ func TestSections(t *testing.T) {
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
 				s.ScanTargets()
 				s.ScanTypes()
-				s.ScanProcs()
+				s.ScanFns()
 				s.ScanSections()
 			},
 		},

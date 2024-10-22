@@ -75,11 +75,11 @@ func NewStruct(pairs ...TypePair) *Struct {
 	return &s
 }
 
-type Proc struct {
+type Fn struct {
 	In  Type
 	Out Type
 }
 
-func (t *Proc) Name() string {
-	return fmt.Sprintf("proc (%s -> %s)", t.In.Name(), t.Out.Name())
+func (t *Fn) Name() string {
+	return fmt.Sprintf("fn (%s -> %s)", t.In.Name(), t.Out.Name())
 }

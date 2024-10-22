@@ -152,7 +152,7 @@ func TestBasicExpr(t *testing.T) {
 func TestComplexExpr(t *testing.T) {
 	scope := pkg.NewScope()
 	scope.Define("age", types.Int)
-	scope.Define("func", &types.Proc{
+	scope.Define("func", &types.Fn{
 		In:  types.Int,
 		Out: types.String,
 	})
@@ -229,7 +229,7 @@ func TestResolveErrs(t *testing.T) {
 			In:       expr("undefined(.)"),
 			Out:      types.Empty,
 			Err:      &errs.ResolveError{},
-			Contains: string(errs.PROC),
+			Contains: string(errs.FN),
 		},
 	}
 	Run(tests, t)

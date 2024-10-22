@@ -9,7 +9,7 @@ var ListPkg = &Package{
 }
 
 func init() {
-	ListPkg.Scope.Define("Join", &types.Proc{
+	ListPkg.Scope.Define("Join", &types.Fn{
 		In:  &types.List{Type: types.String},
 		Out: types.String,
 	})

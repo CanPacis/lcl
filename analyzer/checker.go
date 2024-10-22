@@ -14,10 +14,10 @@ type ResolveContext int
 
 const (
 	GLOBAL ResolveContext = iota
-	PROC_BODY
+	FN_BODY
 	TEMPLATE_EXPR
 
-	PROC
+	FN
 	TYPE
 	CONST
 )
@@ -47,7 +47,7 @@ type Checker struct {
 	tags map[string]language.Tag
 
 	types   map[string]*ast.TypeDefStmt
-	procs   map[string]*ast.FnDefStmt
+	fns     map[string]*ast.FnDefStmt
 	targets map[string]*ast.IdentExpr
 
 	self types.Type
@@ -132,8 +132,8 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	var kind errs.Resolvable
 
 	switch c.Context() {
-	case PROC:
-		kind = errs.PROC
+	case FN:
+		kind = errs.FN
 	case CONST:
 		kind = errs.CONST
 	default:
@@ -161,7 +161,7 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		}
 
 		if !c.Comparable(left, right) {
-			if (left == types.Self || right == types.Self) && c.Context() == PROC_BODY {
+			if (left == types.Self || right == types.Self) && c.Context() == FN_BODY {
 				return types.Empty, errs.NewTypeError(expr, "%s: self expression is ambigious", errs.NotInferrable)
 			}
 			return types.Empty, errs.NewTypeError(expr, "%s: %s %s", errs.NotComparable, left.Name(), right.Name())
@@ -193,32 +193,32 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		return left, nil
 	case *ast.CallExpr:
-		c.Begin(PROC)
-		proc, err := c.ResolveExpr(expr.Fn)
+		c.Begin(FN)
+		fn, err := c.ResolveExpr(expr.Fn)
 		if err != nil {
 			return types.Empty, err
 		}
 		c.End()
 
-		callable, ok := proc.(*types.Proc)
+		callable, ok := fn.(*types.Fn)
 		if !ok {
 			return types.Empty, errs.NewTypeError(expr.Fn, errs.NotCallable)
 		}
 
-		param, err := c.ResolveExpr(expr.Param)
-		if err != nil {
-			return types.Empty, err
-		}
+		// param, err := c.ResolveExpr(expr.Args)
+		// if err != nil {
+		// 	return types.Empty, err
+		// }
 
-		if !c.Assignable(callable.In, param) {
-			return types.Empty, errs.NewTypeError(
-				expr.Param,
-				"%s, proc expects a '%s' but got '%s'",
-				errs.NotAssignable,
-				callable.In.Name(),
-				param.Name(),
-			)
-		}
+		// if !c.Assignable(callable.In, param) {
+		// 	return types.Empty, errs.NewTypeError(
+		// 		expr.Args,
+		// 		"%s, fn expects a '%s' but got '%s'",
+		// 		errs.NotAssignable,
+		// 		callable.In.Name(),
+		// 		param.Name(),
+		// 	)
+		// }
 
 		return callable.Out, nil
 	case *ast.MemberExpr:
@@ -261,7 +261,7 @@ func (c *Checker) Convertible(left, right types.Type) bool {
 }
 
 func (c *Checker) Assignable(left, right types.Type) bool {
-	if c.Context() == PROC_BODY && right == types.Self {
+	if c.Context() == FN_BODY && right == types.Self {
 		c.self = left
 		return true
 	}
@@ -283,8 +283,8 @@ func (c *Checker) RegisterType(node *ast.TypeDefStmt) error {
 	return nil
 }
 
-func (c *Checker) RegisterProc(node *ast.FnDefStmt) error {
-	if original, exists := c.procs[node.Name.Value]; exists {
+func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
+	if original, exists := c.fns[node.Name.Value]; exists {
 		return &errs.DuplicateDefError{
 			Name:     node.Name.Value,
 			Original: original,
@@ -292,13 +292,13 @@ func (c *Checker) RegisterProc(node *ast.FnDefStmt) error {
 		}
 	}
 
-	c.procs[node.Name.Value] = node
+	c.fns[node.Name.Value] = node
 	c.scope.Define(node.Name.Value, types.Empty)
 	return nil
 }
 
 func (c *Checker) RegisterTarget(node *ast.IdentExpr) (language.Tag, error) {
-	if original, exists := c.procs[node.Value]; exists {
+	if original, exists := c.fns[node.Value]; exists {
 		return language.Tag{}, &errs.DuplicateDefError{
 			Name:     node.Value,
 			Original: original,
@@ -341,7 +341,7 @@ func NewChecker(scope *pkg.Scope, env *types.Environment) *Checker {
 		tags: make(map[string]language.Tag),
 
 		types:   make(map[string]*ast.TypeDefStmt),
-		procs:   make(map[string]*ast.FnDefStmt),
+		fns:     make(map[string]*ast.FnDefStmt),
 		targets: make(map[string]*ast.IdentExpr),
 	}
 	c.Init()
