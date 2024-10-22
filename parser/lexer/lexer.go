@@ -44,6 +44,7 @@ type Lexer struct {
 	newLine    bool
 	start, end token.Position
 
+	// last extracted tokens from a template
 	template []token.Token
 }
 
@@ -148,10 +149,6 @@ func (l *Lexer) Next() token.Token {
 		}
 	}
 }
-
-// func (l *Lexer) TemplateTokens() []token.Token {
-// 	return l.template
-// }
 
 func (l *Lexer) lexSpecial() token.Token {
 	var tk token.Token
@@ -320,24 +317,24 @@ func joinTokens(list []token.Token, kind token.Kind) token.Token {
 
 func (l *Lexer) lexTemplateLit() token.Token {
 	l.advance()
+
 	// will accumulate the tokens inside and join them
-	// tokens := []token.Token{}
-	l.template = []token.Token{}
+	tokens := []token.Token{}
 
 	for l.current != eof && l.current != '`' {
 		if l.current == '{' && l.last() != '\\' {
-			l.template = append(l.template, l.token(token.UNKNOWN))
+			tokens = append(tokens, l.token(token.UNKNOWN))
 			l.advance()
 			start := l.token(token.UNTERM_TEMP_EXPR)
-			l.template = append(l.template, start)
+			tokens = append(tokens, start)
 
 			var tk token.Token
 			for tk.Kind != token.EOF && tk.Kind != token.RIGHT_CURLY_BRACE {
 				tk = l.Next()
-				l.template = append(l.template, tk)
+				tokens = append(tokens, tk)
 			}
 
-			if l.template[len(l.template)-1].Kind != token.RIGHT_CURLY_BRACE {
+			if tokens[len(tokens)-1].Kind != token.RIGHT_CURLY_BRACE {
 				return start
 			}
 
@@ -350,9 +347,9 @@ func (l *Lexer) lexTemplateLit() token.Token {
 		return l.token(token.UNTERM_TEMP)
 	}
 	l.advance()
-	l.template = append(l.template, l.token(token.UNKNOWN))
-
-	return joinTokens(l.template, token.TEMPLATE_LIT)
+	tokens = append(tokens, l.token(token.UNKNOWN))
+	l.template = tokens
+	return joinTokens(tokens, token.TEMPLATE_LIT)
 }
 
 func (l *Lexer) lexSpace() token.Token {
