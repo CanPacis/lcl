@@ -169,13 +169,13 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `call(true ? a == b : a || c)`},
 	}
 
-	test.Run(tests, t)
+	test.Run(t, tests)
 }
 
 func TestMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	ast, err := test.Parse(test.WithSourceString(`declare i18n ("en-US" as en)`))
+	ast, err := test.Parse(test.WithSourceString(`declare i18n ("en-US" as en_us)`))
 	assert.NoError(err)
 	b, err := json.MarshalIndent(ast, "", "  ")
 	assert.NoError(err)

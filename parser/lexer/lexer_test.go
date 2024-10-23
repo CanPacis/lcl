@@ -3,6 +3,7 @@ package lexer_test
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/CanPacis/go-i18n/parser/lexer"
@@ -60,12 +61,28 @@ func (cl CaseList) Run(t *testing.T) {
 	}
 }
 
-func Exp(kind token.Kind, literal string, sl, sc, el, ec int) Expectation {
+func Exp(kind token.Kind, literal string, sl, sc int) Expectation {
+	start := token.NewPosition(sl, sc)
+	end := token.NewPosition(sl, sc)
+	raw := literal
+
+	switch kind {
+	case token.STRING:
+		end.Column += 2
+		end.Column += strings.Count(raw, `"`)
+	case token.TEMPLATE:
+		end.Column += 2
+	case token.COMMENT:
+		end.Column += 1
+	}
+
+	end.Column += len(raw)
+
 	return Expectation{
 		Kind:    kind,
 		Literal: literal,
-		Start:   token.NewPosition(sl, sc),
-		End:     token.NewPosition(el, ec),
+		Start:   start,
+		End:     end,
 	}
 }
 
@@ -79,24 +96,24 @@ func TestSpecialChars(t *testing.T) {
 			skipsWhitespace: true,
 			Input:           "( ) { } [ ] . , ::: ? == != > >= < <= *",
 			Expected: []Expectation{
-				Exp(token.LEFT_PARENS, "(", 1, 1, 1, 2),
-				Exp(token.RIGHT_PARENS, ")", 1, 3, 1, 4),
-				Exp(token.LEFT_CURLY_BRACE, "{", 1, 5, 1, 6),
-				Exp(token.RIGHT_CURLY_BRACE, "}", 1, 7, 1, 8),
-				Exp(token.LEFT_SQUARE_BRACKET, "[", 1, 9, 1, 10),
-				Exp(token.RIGHT_SQUARE_BRACKET, "]", 1, 11, 1, 12),
-				Exp(token.DOT, ".", 1, 13, 1, 14),
-				Exp(token.COMMA, ",", 1, 15, 1, 16),
-				Exp(token.DOUBLE_COLON, "::", 1, 17, 1, 19),
-				Exp(token.COLON, ":", 1, 19, 1, 20),
-				Exp(token.QUESTION_MARK, "?", 1, 21, 1, 22),
-				Exp(token.EQUALS, "==", 1, 23, 1, 25),
-				Exp(token.NOT_EQUALS, "!=", 1, 26, 1, 28),
-				Exp(token.GT, ">", 1, 29, 1, 30),
-				Exp(token.GTE, ">=", 1, 31, 1, 33),
-				Exp(token.LT, "<", 1, 34, 1, 35),
-				Exp(token.LTE, "<=", 1, 36, 1, 38),
-				Exp(token.STAR, "*", 1, 39, 1, 40),
+				Exp(token.LEFT_PARENS, "(", 1, 1),
+				Exp(token.RIGHT_PARENS, ")", 1, 3),
+				Exp(token.LEFT_CURLY_BRACE, "{", 1, 5),
+				Exp(token.RIGHT_CURLY_BRACE, "}", 1, 7),
+				Exp(token.LEFT_SQUARE_BRACKET, "[", 1, 9),
+				Exp(token.RIGHT_SQUARE_BRACKET, "]", 1, 11),
+				Exp(token.DOT, ".", 1, 13),
+				Exp(token.COMMA, ",", 1, 15),
+				Exp(token.DOUBLE_COLON, "::", 1, 17),
+				Exp(token.COLON, ":", 1, 19),
+				Exp(token.QUESTION_MARK, "?", 1, 21),
+				Exp(token.EQUALS, "==", 1, 23),
+				Exp(token.NOT_EQUALS, "!=", 1, 26),
+				Exp(token.GT, ">", 1, 29),
+				Exp(token.GTE, ">=", 1, 31),
+				Exp(token.LT, "<", 1, 34),
+				Exp(token.LTE, "<=", 1, 36),
+				Exp(token.STAR, "*", 1, 39),
 			},
 		},
 	}
@@ -108,15 +125,16 @@ func TestAlphanumeric(t *testing.T) {
 	tests := CaseList{
 		{
 			skipsWhitespace: true,
-			Input:           "declare import fn type section identifier as",
+			Input:           "declare import fn type section identifier id_ent as",
 			Expected: []Expectation{
-				Exp(token.DECLARE, "declare", 1, 1, 1, 8),
-				Exp(token.IMPORT, "import", 1, 9, 1, 15),
-				Exp(token.FN, "fn", 1, 16, 1, 18),
-				Exp(token.TYPE, "type", 1, 19, 1, 23),
-				Exp(token.SECTION, "section", 1, 24, 1, 31),
-				Exp(token.IDENT, "identifier", 1, 32, 1, 42),
-				Exp(token.AS, "as", 1, 43, 1, 45),
+				Exp(token.DECLARE, "declare", 1, 1),
+				Exp(token.IMPORT, "import", 1, 9),
+				Exp(token.FN, "fn", 1, 16),
+				Exp(token.TYPE, "type", 1, 19),
+				Exp(token.SECTION, "section", 1, 24),
+				Exp(token.IDENT, "identifier", 1, 32),
+				Exp(token.IDENT, "id_ent", 1, 43),
+				Exp(token.AS, "as", 1, 50),
 			},
 		},
 	}
@@ -129,37 +147,37 @@ func TestString(t *testing.T) {
 		{
 			Input: `"this is some string"`,
 			Expected: []Expectation{
-				Exp(token.STRING, "this is some string", 1, 1, 1, 22),
+				Exp(token.STRING, "this is some string", 1, 1),
 			},
 		},
 		{
 			Input: `"esca\"ped string"`,
 			Expected: []Expectation{
-				Exp(token.STRING, `esca"ped string`, 1, 1, 1, 19),
+				Exp(token.STRING, `esca"ped string`, 1, 1),
 			},
 		},
 		{
 			Input: `"unterminated string`,
 			Expected: []Expectation{
-				Exp(token.UNTERM_STR, `"unterminated string`, 1, 1, 1, 21),
+				Exp(token.UNTERM_STR, `"unterminated string`, 1, 1),
 			},
 		},
 		{
 			Input: "`template string`",
 			Expected: []Expectation{
-				Exp(token.TEMPLATE, "template string", 1, 1, 1, 18),
+				Exp(token.TEMPLATE, "template string", 1, 1),
 			},
 		},
 		{
 			Input: "`unterminated template",
 			Expected: []Expectation{
-				Exp(token.UNTERM_TEMP, "`unterminated template", 1, 1, 1, 23),
+				Exp(token.UNTERM_TEMP, "`unterminated template", 1, 1),
 			},
 		},
 		{
 			Input: "`template with { expression \"\" `` }`",
 			Expected: []Expectation{
-				Exp(token.TEMPLATE, "template with { expression \"\" `` }", 1, 1, 1, 37),
+				Exp(token.TEMPLATE, "template with { expression \"\" `` }", 1, 1),
 			},
 		},
 		{
@@ -167,7 +185,7 @@ func TestString(t *testing.T) {
 			// so the first expression is left unclosed
 			Input: "`unterminated template { inside expr ` }`",
 			Expected: []Expectation{
-				Exp(token.UNTERM_TEMP_EXPR, "{", 1, 24, 1, 25),
+				Exp(token.UNTERM_TEMP_EXPR, "{", 1, 24),
 			},
 		},
 	}
@@ -181,15 +199,15 @@ func TestComment(t *testing.T) {
 			skipsWhitespace: true,
 			Input:           "# test comment",
 			Expected: []Expectation{
-				Exp(token.COMMENT, " test comment", 1, 1, 1, 15),
+				Exp(token.COMMENT, " test comment", 1, 1),
 			},
 		},
 		{
 			skipsWhitespace: true,
 			Input:           "# test comment\n\n#another comment",
 			Expected: []Expectation{
-				Exp(token.COMMENT, " test comment", 1, 1, 1, 15),
-				Exp(token.COMMENT, "another comment", 3, 1, 3, 17),
+				Exp(token.COMMENT, " test comment", 1, 1),
+				Exp(token.COMMENT, "another comment", 3, 1),
 			},
 		},
 	}
@@ -203,17 +221,17 @@ func TestNumber(t *testing.T) {
 			skipsWhitespace: true,
 			Input:           "- 0 -3 04 0. 0.3 245 36.6 -2 -0.1 -0",
 			Expected: []Expectation{
-				Exp(token.ILLEGAL, "-", 1, 1, 1, 2),
-				Exp(token.NUMBER, "0", 1, 3, 1, 4),
-				Exp(token.NUMBER, "-3", 1, 5, 1, 7),
-				Exp(token.ILLEGAL, "04", 1, 8, 1, 10),
-				Exp(token.ILLEGAL, "0.", 1, 11, 1, 13),
-				Exp(token.NUMBER, "0.3", 1, 14, 1, 17),
-				Exp(token.NUMBER, "245", 1, 18, 1, 21),
-				Exp(token.NUMBER, "36.6", 1, 22, 1, 26),
-				Exp(token.NUMBER, "-2", 1, 27, 1, 29),
-				Exp(token.NUMBER, "-0.1", 1, 30, 1, 34),
-				Exp(token.NUMBER, "-0", 1, 35, 1, 37),
+				Exp(token.ILLEGAL, "-", 1, 1),
+				Exp(token.NUMBER, "0", 1, 3),
+				Exp(token.NUMBER, "-3", 1, 5),
+				Exp(token.ILLEGAL, "04", 1, 8),
+				Exp(token.ILLEGAL, "0.", 1, 11),
+				Exp(token.NUMBER, "0.3", 1, 14),
+				Exp(token.NUMBER, "245", 1, 18),
+				Exp(token.NUMBER, "36.6", 1, 22),
+				Exp(token.NUMBER, "-2", 1, 27),
+				Exp(token.NUMBER, "-0.1", 1, 30),
+				Exp(token.NUMBER, "-0", 1, 35),
 			},
 		},
 	}

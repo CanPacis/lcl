@@ -23,7 +23,7 @@ var (
 		"section": token.SECTION,
 	}
 
-	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*', '&'}
+	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*', '&', '_'}
 
 	EOF = token.Token{
 		Kind:    token.EOF,
@@ -242,7 +242,7 @@ func (l *Lexer) lexSpecial() token.Token {
 }
 
 func (l *Lexer) lexAlphanumeric() token.Token {
-	for unicode.IsLetter(l.current) || unicode.IsDigit(l.current) {
+	for unicode.IsLetter(l.current) || unicode.IsDigit(l.current) || l.current == '_' {
 		l.advance()
 	}
 
