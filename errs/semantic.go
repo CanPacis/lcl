@@ -60,7 +60,7 @@ const (
 	NotComparable = "expressions are not comparable"
 	PredIsNonBool = "predicate expression must be a bool"
 	PredIsInvalid = "both sides of the predicate must be the same type"
-	ArgumentCount = "invalid number of arguments"
+	ArgumentCount = "incorrect number of arguments"
 	NotCallable   = "expression is not callable"
 	NotAssignable = "expression is not assignable"
 	NotIndexable  = "expression is not indexable"
@@ -89,7 +89,7 @@ func (e *ResolveError) Error() string {
 		details = ", you did not specify '" + e.Value + "' as a target"
 	}
 
-	return Unresolved + " " + string(e.Kind) + ": " + e.Value + details
+	return Unresolved + " " + string(e.Kind) + " '" + e.Value + "'" + details
 }
 
 func (e *ResolveError) Position() (start token.Position, end token.Position) {

@@ -313,9 +313,9 @@ func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
 	return nil
 }
 
-func (c *Checker) RegisterTarget(node *ast.DeclTarget) (language.Tag, error) {
+func (c *Checker) RegisterTarget(node *ast.DeclTarget) error {
 	if original, exists := c.fns[node.Name.Value]; exists {
-		return language.Tag{}, &errs.DuplicateError{
+		return &errs.DuplicateError{
 			Name:     node.Name.Value,
 			Original: original,
 			Node:     node,
@@ -332,14 +332,14 @@ func (c *Checker) RegisterTarget(node *ast.DeclTarget) (language.Tag, error) {
 	c.targets[node.Name.Value] = node
 	tag, err := language.Parse(name)
 	if err != nil {
-		return language.Tag{}, &errs.ResolveError{
+		return &errs.ResolveError{
 			Value: name,
 			Kind:  errs.TARGET,
 			Node:  node,
 		}
 	}
 	c.tags[node.Name.Value] = tag
-	return tag, nil
+	return nil
 }
 
 func (c *Checker) LookupTag(expr *ast.IdentExpr) (language.Tag, error) {

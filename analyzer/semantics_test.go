@@ -1,148 +1,126 @@
 package analyzer_test
 
-import "fmt"
+import (
+	"embed"
+	"fmt"
+	"testing"
 
-func init() {
-	fmt.Println("read test files")
+	"github.com/CanPacis/go-i18n/analyzer"
+	"github.com/CanPacis/go-i18n/errs"
+	pkg "github.com/CanPacis/go-i18n/package"
+	"github.com/CanPacis/go-i18n/parser"
+	"github.com/CanPacis/go-i18n/test"
+	"github.com/CanPacis/go-i18n/types"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/text/language"
+)
+
+//go:embed test/*.lcl
+var tests embed.FS
+
+func semantics(name string, scope *pkg.Scope, env *types.Environment) *analyzer.Semantics {
+	source, _ := tests.Open(name)
+	defer source.Close()
+	file := parser.NewFile(name, source)
+	ast := test.MustParse(test.WithFile(file))
+	if scope == nil {
+		scope = pkg.NewScope()
+	}
+	if env == nil {
+		env = types.NewEnvironment()
+	}
+	return analyzer.New(file, ast, analyzer.NewChecker(scope, env))
 }
 
-// type AnalyzerCase struct {
-// 	File     *parser.File
-// 	Test     func(*analyzer.Semantics, *assert.Assertions)
-// 	Contains string
-// }
+func TestDeclare(t *testing.T) {
+	assert := assert.New(t)
+	s := semantics("test/declare.lcl", nil, nil)
 
-// func (c *AnalyzerCase) Run(assert *assert.Assertions) {
-// 	ast := test.MustParse(test.WithFile(c.File))
-// 	sem := analyzer.New(c.File, ast)
-// 	if c.Test != nil {
-// 		c.Test(sem, assert)
-// 	}
-// 	if len(c.Contains) > 0 {
-// 		assert.ErrorContains(sem.Errors(), c.Contains)
-// 	}
-// }
+	assert.Equal("i18n", s.ScanName())
+	targets := s.ScanTags()
 
-// func TestSemanticScan(t *testing.T) {
-// 	tests := []test.Runner{
-// 		&AnalyzerCase{
-// 			File: Test["TestAnalyzer0"],
-// 			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
-// 				assert.Equal("i18n", s.ScanName())
-// 				targets := s.ScanTargets()
-// 				assert.Equal(3, len(targets))
-// 				assert.Equal(language.English, targets[0])
-// 				assert.Equal(language.French, targets[1])
-// 				assert.Equal(language.German, targets[2])
-// 			},
-// 		},
-// 		&AnalyzerCase{
-// 			File: Test["TestAnalyzer1"],
-// 			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
-// 				targets := s.ScanTargets()
-// 				assert.Equal(1, len(targets))
-// 				assert.Equal(language.Und, targets[0])
-// 			},
-// 			Contains: errs.Unresolved,
-// 		},
-// 		&AnalyzerCase{
-// 			File: Test["TestAnalyzer2"],
-// 			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
-// 				imports := s.ScanImports()
-// 				assert.Equal(3, len(imports))
-// 				assert.Equal("A", imports[0].Name)
-// 				assert.Equal("B", imports[1].Name)
-// 				assert.Equal("C", imports[2].Name)
-// 			},
-// 		},
-// 	}
+	assert.Equal(4, len(targets))
+	assert.Equal(language.English, targets["en"])
+	assert.Equal(language.French, targets["fr"])
+	assert.Equal(language.German, targets["de"])
+	assert.Equal(language.English, targets["en_au"].Parent().Parent())
+	assert.ErrorIs(s.Errors(), &errs.ResolveError{})
+	assert.ErrorContains(s.Errors(), "invalid")
 
-// 	test.Run(t, tests)
-// }
+	imports := s.ScanImports()
 
-// func TestLocalTypeAnalysis(t *testing.T) {
-// 	tests := []test.Runner{
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestLocalTypeAnalysis0"],
-// 		// 	Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 		// 		s.ScanTypes()
-// 		// 	},
-// 		// 	Contains: errs.Duplicate,
-// 		// },
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestLocalTypeAnalysis1"],
-// 		// 	Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 		// 		s.ScanTypes()
-// 		// 	},
-// 		// 	Contains: errs.Unresolved,
-// 		// },
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestLocalTypeAnalysis2"],
-// 		// 	Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 		// 		s.ScanTypes()
-// 		// 		s.ScanFns()
-// 		// 	},
-// 		// 	Contains: errs.Duplicate,
-// 		// },
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestLocalTypeAnalysis3"],
-// 		// 	Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 		// 		s.ScanTypes()
-// 		// 		s.ScanFns()
-// 		// 	},
-// 		// 	Contains: errs.Unresolved,
-// 		// },
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestLocalTypeAnalysis4"],
-// 		// 	Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
-// 		// 		s.ScanTypes()
-// 		// 		scope := s.ScanFns()
+	assert.Equal(3, len(imports))
+	assert.Equal("A", imports[0].Name)
+	assert.Equal("B", imports[1].Name)
+	assert.Equal("C", imports[2].Name)
+}
 
-// 		// 		exports := scope.Exports()
-// 		// 		p1 := exports["p1"].(*types.Fn)
-// 		// 		p2 := exports["p2"].(*types.Fn)
-// 		// 		p3 := exports["p3"].(*types.Fn)
+func TestTypes(t *testing.T) {
+	assert := assert.New(t)
+	scope := pkg.NewScope()
+	env := types.NewEnvironment()
 
-// 		// 		assert.Equal([]types.Type{types.Time}, p1.In)
-// 		// 		assert.Equal(types.String, p1.Out)
+	time := types.New("time", types.Int)
 
-// 		// 		assert.Equal([]types.Type{types.Time}, p2.In)
-// 		// 		assert.Equal(types.Int, p2.Out)
+	env.Define("time", time)
+	scope.Define("year", &types.Fn{
+		In:  []types.Type{time},
+		Out: types.Int,
+	})
+	scope.Define("itoa", &types.Fn{
+		In:  []types.Type{types.Int},
+		Out: types.String,
+	})
 
-// 		// 		assert.Equal([]types.Type{types.Time}, p3.In)
-// 		// 		assert.Equal(types.Int, p3.Out)
-// 		// 	},
-// 		// 	Contains: errs.NotAssignable,
-// 		// },
-// 	}
-// 	test.Run(t, tests)
-// }
+	s := semantics("test/types.lcl", scope, env)
 
-// func TestForeignTypeAnalysis(t *testing.T) {
-// 	tests := []test.Runner{
-// 		// &AnalyzerCase{
-// 		// 	File: Test["TestForeignTypeAnalysis0"],
-// 		// 	Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 		// 		s.ScanImports()
-// 		// 		s.ScanTypes()
-// 		// 		s.ScanFns()
-// 		// 	},
-// 		// },
-// 	}
-// 	test.Run(t, tests)
-// }
+	s.ScanTypes()
+	s.ScanFns()
 
-// func TestSections(t *testing.T) {
-// 	tests := []test.Runner{
-// 		&AnalyzerCase{
-// 			File: Test["TestSections0"],
-// 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
-// 				s.ScanTargets()
-// 				s.ScanTypes()
-// 				s.ScanFns()
-// 				s.ScanSections()
-// 			},
-// 		},
-// 	}
-// 	test.Run(t, tests)
-// }
+	err := s.Errors().(*errs.SemanticError)
+
+	assert.Equal(6, len(err.Reasons))
+	assert.ErrorIs(err.Reasons[0], &errs.DuplicateError{})
+	assert.ErrorIs(err.Reasons[1], &errs.ResolveError{})
+	assert.ErrorIs(err.Reasons[2], &errs.DuplicateError{})
+	assert.ErrorIs(err.Reasons[3], &errs.ResolveError{})
+	assert.ErrorIs(err.Reasons[4], &errs.TypeError{})
+	assert.ErrorIs(err.Reasons[5], &errs.TypeError{})
+
+	exports := scope.Exports()
+
+	fn := &types.Fn{}
+	assert.IsType(fn, exports["Fn1"])
+	assert.IsType(fn, exports["Fn2"])
+
+	fn1 := exports["Fn1"].(*types.Fn)
+	assert.ElementsMatch(fn1.In, []types.Type{time})
+	assert.IsType(fn1.Out, types.Int)
+
+	fn2 := exports["Fn2"].(*types.Fn)
+	assert.ElementsMatch(fn2.In, []types.Type{time})
+	assert.IsType(fn2.Out, types.String)
+}
+
+func TestImports(t *testing.T) {
+	assert := assert.New(t)
+	s := semantics("test/imports.lcl", nil, nil)
+
+	s.ScanTags()
+	s.ScanImports()
+	s.ScanTypes()
+	s.ScanFns()
+
+	fmt.Println(s.Errors(), assert)
+}
+
+func TestSections(t *testing.T) {
+	assert := assert.New(t)
+	s := semantics("test/sections.lcl", nil, nil)
+
+	s.ScanTags()
+	s.ScanTypes()
+	s.ScanFns()
+	s.ScanSections()
+	fmt.Println(s.Errors(), assert)
+}

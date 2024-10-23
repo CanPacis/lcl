@@ -34,17 +34,13 @@ func (s Semantics) ScanName() string {
 	return s.ast.Decl.Name.Value
 }
 
-func (s *Semantics) ScanTargets() []language.Tag {
-	targets := []language.Tag{}
-
+func (s *Semantics) ScanTags() map[string]language.Tag {
 	for _, node := range s.ast.Decl.Targets {
-		tag, err := s.checker.RegisterTarget(node)
-		if err != nil {
+		if err := s.checker.RegisterTarget(node); err != nil {
 			s.error(err)
 		}
-		targets = append(targets, tag)
 	}
-	return targets
+	return s.checker.tags
 }
 
 func (s *Semantics) ScanImports() []*pkg.Package {
@@ -240,10 +236,10 @@ func (s *Semantics) Scan() error {
 	return s.Errors()
 }
 
-func New(file *parser.File, ast *ast.File) *Semantics {
+func New(file *parser.File, ast *ast.File, checker *Checker) *Semantics {
 	return &Semantics{
 		file:    file.Name,
 		ast:     ast,
-		checker: NewChecker(pkg.NewScope(), types.NewEnvironment()),
+		checker: checker,
 	}
 }

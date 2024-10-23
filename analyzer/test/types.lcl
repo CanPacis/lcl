@@ -5,11 +5,12 @@ type Duplicate int
 
 type Undefined undefined
 
-fn() test 5
-fn() test 5
+fn() Duplicate 0
+fn() Duplicate 0
 
-fn() test undefined
+fn() Undefined undefined
 
-fn(t::time) p1 itoa(year(t))
-fn(t::time) p2 year(itoa(t))
-fn(t::time) p3 year(t)
+fn(t::int) Fn0 year(t)
+fn(t::time) Fn1 year(t)
+fn(t::time) Fn2 itoa(year(t))
+fn(t::time) Fn3 itoa(t)
