@@ -33,7 +33,7 @@ func (e *SemanticError) Error() string {
 	}
 	reason := e.Reasons[0]
 
-	return fmt.Sprintf("semantic error: %s", reason.Error())
+	return "semantic error: " + reason.Error()
 }
 
 func (e *SemanticError) Unwrap() []error {
@@ -51,17 +51,6 @@ func NewSemanticError(reasons []error, file string) *SemanticError {
 	}
 }
 
-type Resolvable string
-
-const (
-	IMPORT Resolvable = "import"
-	TARGET Resolvable = "target"
-	TAG    Resolvable = "tag"
-	TYPE   Resolvable = "type"
-	FN     Resolvable = "fn"
-	CONST  Resolvable = "const"
-)
-
 const (
 	Unresolved     = "unresolved"
 	Duplicate      = "duplicate definition"
@@ -77,6 +66,17 @@ const (
 	NotIndexable  = "expression is not indexable"
 )
 
+type Resolvable string
+
+const (
+	IMPORT Resolvable = "import"
+	TARGET Resolvable = "target"
+	TAG    Resolvable = "tag"
+	TYPE   Resolvable = "type"
+	FN     Resolvable = "fn"
+	CONST  Resolvable = "const"
+)
+
 type ResolveError struct {
 	Value string
 	Kind  Resolvable
@@ -84,10 +84,12 @@ type ResolveError struct {
 }
 
 func (e *ResolveError) Error() string {
+	details := ""
 	if e.Kind == TAG {
-		return fmt.Sprintf("%s %s: %s, you did not specify '%s' as a target", Unresolved, e.Kind, e.Value, e.Value)
+		details = ", you did not specify '" + e.Value + "' as a target"
 	}
-	return fmt.Sprintf("%s %s: %s", Unresolved, e.Kind, e.Value)
+
+	return Unresolved + " " + string(e.Kind) + ": " + e.Value + details
 }
 
 func (e *ResolveError) Position() (start token.Position, end token.Position) {
@@ -100,7 +102,7 @@ type TypeError struct {
 }
 
 func (e *TypeError) Error() string {
-	return fmt.Sprintf("%s: %s", Type, e.Message)
+	return Type + ": " + e.Message
 }
 
 func (e *TypeError) Position() (start token.Position, end token.Position) {
@@ -121,13 +123,10 @@ type DuplicateDefError struct {
 }
 
 func (e *DuplicateDefError) Error() string {
-	return fmt.Sprintf(
-		"%s: '%s' is already defined here %s - %s",
-		Duplicate,
-		e.Name,
-		e.Original.Start(),
-		e.Original.End(),
-	)
+	start, end := e.Original.Start(), e.Original.End()
+	pos := start.String() + " - " + end.String()
+
+	return Duplicate + ": '" + e.Name + "' is already defined here " + pos
 }
 
 func (e *DuplicateDefError) Position() (start token.Position, end token.Position) {
@@ -143,9 +142,10 @@ type TargetMismatchError struct {
 
 func (e *TargetMismatchError) Error() string {
 	if e.Missing {
-		return fmt.Sprintf("%s: key is missing the '%s' field", TargetMismatch, e.Tag)
+		return TargetMismatch + ": key is missing the '" + e.Tag.String() + "' field"
 	}
-	return fmt.Sprintf("%s: idk", TargetMismatch)
+
+	return TargetMismatch
 }
 
 func (e *TargetMismatchError) Position() (start token.Position, end token.Position) {

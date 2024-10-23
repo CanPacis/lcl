@@ -241,9 +241,11 @@ func (c *Checker) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		return callable.Out, nil
 	case *ast.MemberExpr:
-		return types.Empty, &errs.UnsupportedError{Node: expr}
+		// TODO: implement?
+		panic("not implemented")
 	case *ast.IndexExpr:
-		return types.Empty, &errs.UnsupportedError{Node: expr}
+		// TODO: implement?
+		panic("not implemented")
 	case *ast.GroupExpr:
 		return c.ResolveExpr(expr.Expr)
 	case *ast.IdentExpr:

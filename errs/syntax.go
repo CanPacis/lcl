@@ -1,7 +1,6 @@
 package errs
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/CanPacis/go-i18n/parser/token"
@@ -32,7 +31,7 @@ func (e *SyntaxError) Error() string {
 	}
 	reason := e.Reasons[0]
 
-	return fmt.Sprintf("syntax error: %s", reason.Error())
+	return "syntax error: " + reason.Error()
 }
 
 func (e *SyntaxError) Unwrap() []error {
@@ -49,6 +48,12 @@ func NewSyntaxError(reasons []error, file string) *SyntaxError {
 		file:    file,
 	}
 }
+
+const (
+	Unexpected      = "unexpected token"
+	UntermConstruct = "unterminated"
+	Number          = "number error"
+)
 
 type UnexpectedTokenError struct {
 	Details  string
@@ -69,22 +74,18 @@ func (e *UnexpectedTokenError) Error() string {
 
 	expected := []string{}
 	for _, e := range e.Expected {
-		expected = append(expected, fmt.Sprintf("'%s'", e.String()))
+		expected = append(expected, "'"+e.String()+"'")
 	}
 
 	if len(expected) > 0 {
 		if len(expected) == 1 {
-			return fmt.Sprintf("unexpected token: '%s', was expecting a %s%s", e.Found.Kind.String(), expected[0], details)
+			return Unexpected + ": '" + e.Found.Kind.String() + "', was expecting a " + expected[0] + details
 		}
-		return fmt.Sprintf(
-			"unexpected token: '%s', was expecting any of %s%s",
-			e.Found.Kind.String(),
-			strings.Join(expected, ", "),
-			details,
-		)
+
+		return Unexpected + " '" + e.Found.Kind.String() + "', was expecting any of " + strings.Join(expected, ", ") + details
 	}
 
-	return fmt.Sprintf("unexpected token: '%s'%s", e.Found.Kind.String(), details)
+	return Unexpected + ": '" + e.Found.Kind.String() + "'" + details
 }
 
 type UntermConstructError struct {
@@ -92,7 +93,7 @@ type UntermConstructError struct {
 }
 
 func (e *UntermConstructError) Error() string {
-	return fmt.Sprintf("unterminated %s: token does not have an ending", e.Token.Kind.String())
+	return UntermConstruct + " " + e.Token.Kind.String() + ": token does not have an ending"
 }
 
 func (e *UntermConstructError) Position() (start token.Position, end token.Position) {
@@ -113,7 +114,7 @@ func (e *NumberError) Error() string {
 		return ""
 	}
 
-	return fmt.Sprintf("number error: %s", e.Reason.Error())
+	return Number + ": " + e.Reason.Error()
 }
 
 func (e *NumberError) Unwrap() error {

@@ -1,7 +1,6 @@
 package errs
 
 import (
-	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/parser/token"
 )
 
@@ -16,14 +15,14 @@ type TopLevelError interface {
 	File() string
 }
 
-type UnsupportedError struct {
-	Node ast.Node
-}
+// type UnsupportedError struct {
+// 	Node ast.Node
+// }
 
-func (e *UnsupportedError) Error() string {
-	return "unsupported"
-}
+// func (e *UnsupportedError) Error() string {
+// 	return "unsupported"
+// }
 
-func (e *UnsupportedError) Position() (start token.Position, end token.Position) {
-	return e.Node.Start(), e.Node.End()
-}
+// func (e *UnsupportedError) Position() (start token.Position, end token.Position) {
+// 	return e.Node.Start(), e.Node.End()
+// }
