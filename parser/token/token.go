@@ -87,6 +87,7 @@ const (
 	KEYWORD
 
 	DECLARE
+	AS
 	IMPORT
 	FN
 	TYPE
@@ -140,6 +141,7 @@ var tokenMap = map[Kind]string{
 	KEYWORD: "keyword",
 
 	DECLARE: "declare",
+	AS:      "as",
 	IMPORT:  "import",
 	FN:      "fn",
 	TYPE:    "type",

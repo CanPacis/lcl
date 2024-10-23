@@ -108,7 +108,7 @@ func TestAlphanumeric(t *testing.T) {
 	tests := CaseList{
 		{
 			skipsWhitespace: true,
-			Input:           "declare import fn type section identifier",
+			Input:           "declare import fn type section identifier as",
 			Expected: []Expectation{
 				Exp(token.DECLARE, "declare", 1, 1, 1, 8),
 				Exp(token.IMPORT, "import", 1, 9, 1, 15),
@@ -116,6 +116,7 @@ func TestAlphanumeric(t *testing.T) {
 				Exp(token.TYPE, "type", 1, 19, 1, 23),
 				Exp(token.SECTION, "section", 1, 24, 1, 31),
 				Exp(token.IDENT, "identifier", 1, 32, 1, 42),
+				Exp(token.AS, "as", 1, 43, 1, 45),
 			},
 		},
 	}

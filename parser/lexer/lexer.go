@@ -16,6 +16,7 @@ const eof rune = -1
 var (
 	keywords = map[string]token.Kind{
 		"declare": token.DECLARE,
+		"as":      token.AS,
 		"import":  token.IMPORT,
 		"fn":      token.FN,
 		"type":    token.TYPE,
