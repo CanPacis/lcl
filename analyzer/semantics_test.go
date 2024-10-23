@@ -6,6 +6,7 @@ import (
 	"github.com/CanPacis/go-i18n/analyzer"
 	"github.com/CanPacis/go-i18n/errs"
 	"github.com/CanPacis/go-i18n/parser"
+	"github.com/CanPacis/go-i18n/test"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/language"
 )
@@ -17,10 +18,7 @@ type AnalyzerCase struct {
 }
 
 func (c *AnalyzerCase) Run(assert *assert.Assertions) {
-	ast, err := parser.New(c.File).Parse()
-	if err != nil {
-		panic(FormatError(err))
-	}
+	ast := test.MustParse(test.WithFile(c.File))
 	sem := analyzer.New(c.File, ast)
 	if c.Test != nil {
 		c.Test(sem, assert)
@@ -30,8 +28,8 @@ func (c *AnalyzerCase) Run(assert *assert.Assertions) {
 	}
 }
 
-func TestAnalyzer(t *testing.T) {
-	tests := []Runner{
+func TestSemanticScan(t *testing.T) {
+	tests := []test.Runner{
 		&AnalyzerCase{
 			File: Test["TestAnalyzer0"],
 			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
@@ -64,11 +62,11 @@ func TestAnalyzer(t *testing.T) {
 		},
 	}
 
-	Run(tests, t)
+	test.Run(tests, t)
 }
 
 func TestLocalTypeAnalysis(t *testing.T) {
-	tests := []Runner{
+	tests := []test.Runner{
 		&AnalyzerCase{
 			File: Test["TestLocalTypeAnalysis0"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
@@ -123,11 +121,11 @@ func TestLocalTypeAnalysis(t *testing.T) {
 		// },
 	}
 
-	Run(tests, t)
+	test.Run(tests, t)
 }
 
 func TestForeignTypeAnalysis(t *testing.T) {
-	tests := []Runner{
+	tests := []test.Runner{
 		&AnalyzerCase{
 			File: Test["TestForeignTypeAnalysis0"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
@@ -138,11 +136,11 @@ func TestForeignTypeAnalysis(t *testing.T) {
 		},
 	}
 
-	Run(tests, t)
+	test.Run(tests, t)
 }
 
 func TestSections(t *testing.T) {
-	tests := []Runner{
+	tests := []test.Runner{
 		&AnalyzerCase{
 			File: Test["TestSections0"],
 			Test: func(s *analyzer.Semantics, a *assert.Assertions) {
@@ -154,5 +152,5 @@ func TestSections(t *testing.T) {
 		},
 	}
 
-	Run(tests, t)
+	test.Run(tests, t)
 }

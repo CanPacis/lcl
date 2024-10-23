@@ -322,11 +322,18 @@ func (c *Checker) RegisterTarget(node *ast.DeclTarget) (language.Tag, error) {
 		}
 	}
 
+	var name string
+	if node.Tag != nil {
+		name = node.Tag.Value
+	} else {
+		name = node.Name.Value
+	}
+
 	c.targets[node.Name.Value] = node
-	tag, err := language.Parse(node.Tag.Value)
+	tag, err := language.Parse(name)
 	if err != nil {
 		return language.Tag{}, &errs.ResolveError{
-			Value: node.Tag.Value,
+			Value: name,
 			Kind:  errs.TARGET,
 			Node:  node,
 		}

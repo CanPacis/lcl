@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// to make func signatures precise
 type A struct {
 	*assert.Assertions
 }
@@ -36,7 +37,7 @@ func CompareExpr(assert A, left, right ast.Expr) {
 		r := right.(*ast.CallExpr)
 
 		CompareExpr(assert, left.Fn, r.Fn)
-		assert.Equal(len(left.Args), len(r.Args))
+		assert.Equal(len(left.Args), len(r.Args), "invalid number of args are passed to call")
 		for i, arg := range left.Args {
 			CompareExpr(assert, arg, r.Args[i])
 		}
@@ -85,7 +86,7 @@ func CompareTemplate(assert A, left *ast.TemplateLitExpr, right ast.Expr) {
 	assert.IsType(left, right)
 	r := right.(*ast.TemplateLitExpr)
 
-	assert.Equal(len(left.Value), len(r.Value))
+	assert.Equal(len(left.Value), len(r.Value), "Template has invalid number of expressions")
 
 	for i, expr := range left.Value {
 		CompareExpr(assert, expr, r.Value[i])

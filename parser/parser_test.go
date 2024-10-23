@@ -1,59 +1,15 @@
 package parser_test
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/CanPacis/go-i18n/errs"
-	"github.com/CanPacis/go-i18n/parser"
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/go-i18n/test"
 	"github.com/stretchr/testify/assert"
 )
-
-func FormatError(err error) string {
-	tle, ok := err.(errs.TopLevelError)
-	if !ok {
-		return err.Error()
-	}
-
-	start, end := tle.Position()
-	return fmt.Sprintf("%s at %s - %s in %s", tle.Error(), start, end, tle.File())
-}
-
-type Runner interface {
-	Run(*assert.Assertions)
-}
-
-func Run(cases []Runner, t *testing.T) {
-	assert := assert.New(t)
-
-	for _, c := range cases {
-		c.Run(assert)
-	}
-}
-
-func file(src string) *parser.File {
-	return parser.NewFile("test.lcl", bytes.NewBuffer([]byte(src)))
-}
-
-func expr(src string) ast.Expr {
-	expr, err := parser.ParseExpr(file(src))
-	if err != nil {
-		panic(err)
-	}
-	return expr
-}
-
-// func texpr(src string) ast.TypeExpr {
-// 	expr, err := parser.ParseTypeExpr(file(src))
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return expr
-// }
 
 type ExprCase struct {
 	In       string
@@ -63,7 +19,8 @@ type ExprCase struct {
 }
 
 func (c *ExprCase) Run(assert *assert.Assertions) {
-	expr, err := parser.ParseExpr(file(c.In))
+	expr, err := test.ParseExpr(test.WithSourceString(c.In))
+
 	if c.Out != nil {
 		CompareExpr(A{assert}, c.Out, expr)
 	} else {
@@ -71,19 +28,85 @@ func (c *ExprCase) Run(assert *assert.Assertions) {
 			assert.ErrorContains(err, c.Contains)
 		} else {
 			if err != nil {
-				assert.Fail(FormatError(err))
+				assert.Fail(test.FormatError(err))
 			}
 		}
 	}
 }
 
 func TestExpr(t *testing.T) {
-	tests := []Runner{
+	tests := []test.Runner{
 		&ExprCase{
-			In: "ident",
-			Out: &ast.IdentExpr{
-				Value: "ident",
+			In:  "3",
+			Out: &ast.NumberLitExpr{Value: 3},
+		},
+		&ExprCase{
+			In:  "3.1",
+			Out: &ast.NumberLitExpr{Value: 3.1},
+		},
+		&ExprCase{
+			In:  "-3.1",
+			Out: &ast.NumberLitExpr{Value: -3.1},
+		},
+		&ExprCase{
+			In:  "-0",
+			Out: &ast.NumberLitExpr{Value: 0},
+		},
+		&ExprCase{
+			In:  `""`,
+			Out: &ast.StringLitExpr{Value: ""},
+		},
+		&ExprCase{
+			In:  `"literal"`,
+			Out: &ast.StringLitExpr{Value: "literal"},
+		},
+		&ExprCase{
+			In:       `"literal`,
+			Contains: errs.UntermConstruct,
+		},
+		&ExprCase{
+			In: "``",
+			Out: &ast.TemplateLitExpr{
+				Value: []ast.Expr{
+					&ast.StringLitExpr{Value: ""},
+				},
 			},
+		},
+		&ExprCase{
+			In: "`basic`",
+			Out: &ast.TemplateLitExpr{
+				Value: []ast.Expr{
+					&ast.StringLitExpr{Value: "basic"},
+				},
+			},
+		},
+		&ExprCase{
+			In: "`has { expressions } inside { call() }`",
+			Out: &ast.TemplateLitExpr{
+				Value: []ast.Expr{
+					&ast.StringLitExpr{Value: "has "},
+					&ast.IdentExpr{Value: "expressions"},
+					&ast.StringLitExpr{Value: " inside "},
+					&ast.CallExpr{
+						Fn:   &ast.IdentExpr{Value: "call"},
+						Args: []ast.Expr{},
+					},
+					&ast.StringLitExpr{Value: ""},
+				},
+			},
+		},
+		&ExprCase{
+			In:       "`unterminated template ",
+			Contains: errs.UntermConstruct,
+		},
+		&ExprCase{
+			In:       "`unterminated { expression `",
+			Contains: errs.UntermConstruct,
+		},
+		&ExprCase{In: "`{}{\n}\n{}`"},
+		&ExprCase{
+			In:  "ident",
+			Out: &ast.IdentExpr{Value: "ident"},
 		},
 		&ExprCase{
 			In: "ident < 0",
@@ -110,17 +133,49 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		&ExprCase{In: `""()`, Contains: errs.Unexpected},
+		&ExprCase{In: `member.of`},
+		&ExprCase{In: `member.of.long`},
+		&ExprCase{In: `member.of.long()`},
+		&ExprCase{In: `index[0]`},
+		&ExprCase{In: `index.of[0]`},
+		&ExprCase{In: `index.of[invalid]`, Contains: errs.Unexpected},
+		&ExprCase{In: `call(param)`},
+		&ExprCase{In: `call(param1 param2)`},
+		&ExprCase{In: `call(param1 param2)`},
+		&ExprCase{In: `call(param.of index[0])`},
+		&ExprCase{In: `call(param.of (a || b) 6)`},
+		&ExprCase{In: `call(param.of a || (b 6))`, Contains: errs.Unexpected},
+		&ExprCase{
+			In: `call(param.of a || b 6)`,
+			Out: &ast.CallExpr{
+				Fn: &ast.IdentExpr{Value: "call"},
+				Args: []ast.Expr{
+					&ast.MemberExpr{
+						Left:  &ast.IdentExpr{Value: "param"},
+						Right: &ast.IdentExpr{Value: "of"},
+					},
+					&ast.BinaryExpr{
+						Operator: token.Token{Kind: token.OR},
+						Left:     &ast.IdentExpr{Value: "a"},
+						Right:    &ast.IdentExpr{Value: "b"},
+					},
+					&ast.NumberLitExpr{Value: 6},
+				},
+			},
+		},
+		&ExprCase{In: `pred ? if : else`},
+		&ExprCase{In: `pred ? a == b : a || c`},
+		&ExprCase{In: `call() ? a == b : a || c`},
+		&ExprCase{In: `call(true ? a == b : a || c)`},
 	}
 
-	Run(tests, t)
+	test.Run(tests, t)
 }
 
 func TestMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	file := file(`declare i18n ("en-US" as en)`)
-	parser := parser.New(file)
-	ast, err := parser.Parse()
+	ast, err := test.Parse(test.WithSourceString(`declare i18n ("en-US" as en)`))
 	assert.NoError(err)
 	b, err := json.MarshalIndent(ast, "", "  ")
 	assert.NoError(err)
