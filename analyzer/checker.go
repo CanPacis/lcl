@@ -287,7 +287,7 @@ func (c *Checker) Assignable(left, right types.Type) bool {
 
 func (c *Checker) RegisterType(node *ast.TypeDefStmt) error {
 	if original, exists := c.types[node.Name.Value]; exists {
-		return &errs.DuplicateDefError{
+		return &errs.DuplicateError{
 			Name:     node.Name.Value,
 			Original: original,
 			Node:     node,
@@ -301,7 +301,7 @@ func (c *Checker) RegisterType(node *ast.TypeDefStmt) error {
 
 func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
 	if original, exists := c.fns[node.Name.Value]; exists {
-		return &errs.DuplicateDefError{
+		return &errs.DuplicateError{
 			Name:     node.Name.Value,
 			Original: original,
 			Node:     node,
@@ -315,7 +315,7 @@ func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
 
 func (c *Checker) RegisterTarget(node *ast.DeclTarget) (language.Tag, error) {
 	if original, exists := c.fns[node.Name.Value]; exists {
-		return language.Tag{}, &errs.DuplicateDefError{
+		return language.Tag{}, &errs.DuplicateError{
 			Name:     node.Name.Value,
 			Original: original,
 			Node:     node,

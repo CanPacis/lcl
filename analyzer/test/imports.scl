@@ -1,0 +1,5 @@
+declare i18n (en)
+
+import A
+
+fn(d::int) p A.B(d)

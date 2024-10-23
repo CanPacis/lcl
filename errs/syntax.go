@@ -88,6 +88,11 @@ func (e *UnexpectedTokenError) Error() string {
 	return Unexpected + ": '" + e.Found.Kind.String() + "'" + details
 }
 
+func (e *UnexpectedTokenError) Is(err error) bool {
+	_, ok := err.(*UnexpectedTokenError)
+	return ok
+}
+
 type UntermConstructError struct {
 	Token token.Token
 }
@@ -98,6 +103,11 @@ func (e *UntermConstructError) Error() string {
 
 func (e *UntermConstructError) Position() (start token.Position, end token.Position) {
 	return e.Token.Start, e.Token.End
+}
+
+func (e *UntermConstructError) Is(err error) bool {
+	_, ok := err.(*UntermConstructError)
+	return ok
 }
 
 type NumberError struct {
@@ -119,4 +129,9 @@ func (e *NumberError) Error() string {
 
 func (e *NumberError) Unwrap() error {
 	return e.Reason
+}
+
+func (e *NumberError) Is(err error) bool {
+	_, ok := err.(*NumberError)
+	return ok
 }

@@ -1,0 +1,15 @@
+declare i18n (en)
+
+type Duplicate bool
+type Duplicate int
+
+type Undefined undefined
+
+fn() test 5
+fn() test 5
+
+fn() test undefined
+
+fn(t::time) p1 itoa(year(t))
+fn(t::time) p2 year(itoa(t))
+fn(t::time) p3 year(t)

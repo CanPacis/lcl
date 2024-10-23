@@ -1,0 +1,17 @@
+declare i18n (en)
+
+section S {
+  K {
+    en "Simple key"
+  }
+
+  T1() {
+    en `Simple template`
+  }
+
+  section S {
+    T1() {
+      en `Sub template`
+    }
+  }
+}

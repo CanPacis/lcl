@@ -52,10 +52,10 @@ func NewSemanticError(reasons []error, file string) *SemanticError {
 }
 
 const (
-	Unresolved     = "unresolved"
-	Duplicate      = "duplicate definition"
-	Type           = "type error"
-	TargetMismatch = "target mismatch"
+	Unresolved = "unresolved"
+	Duplicate  = "duplicate definition"
+	Type       = "type error"
+	Target     = "target error"
 
 	NotComparable = "expressions are not comparable"
 	PredIsNonBool = "predicate expression must be a bool"
@@ -96,6 +96,11 @@ func (e *ResolveError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
 }
 
+func (e *ResolveError) Is(err error) bool {
+	_, ok := err.(*ResolveError)
+	return ok
+}
+
 type TypeError struct {
 	Message string
 	Node    ast.Node
@@ -109,6 +114,11 @@ func (e *TypeError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
 }
 
+func (e *TypeError) Is(err error) bool {
+	_, ok := err.(*TypeError)
+	return ok
+}
+
 func NewTypeError(node ast.Node, message string, a ...any) *TypeError {
 	return &TypeError{
 		Message: fmt.Sprintf(message, a...),
@@ -116,38 +126,48 @@ func NewTypeError(node ast.Node, message string, a ...any) *TypeError {
 	}
 }
 
-type DuplicateDefError struct {
+type DuplicateError struct {
 	Name     string
 	Original ast.Node
 	Node     ast.Node
 }
 
-func (e *DuplicateDefError) Error() string {
+func (e *DuplicateError) Error() string {
 	start, end := e.Original.Start(), e.Original.End()
 	pos := start.String() + " - " + end.String()
 
 	return Duplicate + ": '" + e.Name + "' is already defined here " + pos
 }
 
-func (e *DuplicateDefError) Position() (start token.Position, end token.Position) {
+func (e *DuplicateError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
 }
 
-type TargetMismatchError struct {
+func (e *DuplicateError) Is(err error) bool {
+	_, ok := err.(*DuplicateError)
+	return ok
+}
+
+type TargetError struct {
 	Target  string
 	Tag     language.Tag
 	Missing bool
 	Node    ast.Node
 }
 
-func (e *TargetMismatchError) Error() string {
+func (e *TargetError) Error() string {
 	if e.Missing {
-		return TargetMismatch + ": key is missing the '" + e.Tag.String() + "' field"
+		return Target + ": key is missing the '" + e.Tag.String() + "' field"
 	}
 
-	return TargetMismatch
+	return Target
 }
 
-func (e *TargetMismatchError) Position() (start token.Position, end token.Position) {
+func (e *TargetError) Position() (start token.Position, end token.Position) {
 	return e.Node.Start(), e.Node.End()
+}
+
+func (e *TargetError) Is(err error) bool {
+	_, ok := err.(*TargetError)
+	return ok
 }

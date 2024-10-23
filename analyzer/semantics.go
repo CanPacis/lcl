@@ -147,7 +147,7 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 	for name, tag := range s.checker.tags {
 		_, ok := key.Fields[tag]
 		if !ok {
-			s.error(&errs.TargetMismatchError{
+			s.error(&errs.TargetError{
 				Target:  name,
 				Tag:     tag,
 				Missing: true,
@@ -188,7 +188,7 @@ func (s *Semantics) extractTemplateEntry(entry *ast.TemplateEntry) *Template {
 	for name, tag := range s.checker.tags {
 		_, ok := template.Fields[tag]
 		if !ok {
-			s.error(&errs.TargetMismatchError{
+			s.error(&errs.TargetError{
 				Target:  name,
 				Tag:     tag,
 				Missing: true,

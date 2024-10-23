@@ -14,9 +14,22 @@ type Runner interface {
 	Run(*assert.Assertions)
 }
 
-func Run(cases []Runner, t *testing.T) {
+func Run(t *testing.T, cases []Runner) {
 	assert := assert.New(t)
 	for _, c := range cases {
+		c.Run(assert)
+	}
+}
+
+type Injector[D any] interface {
+	Runner
+	Inject(D)
+}
+
+func RunWith[D any](t *testing.T, cases []Injector[D], dep D) {
+	assert := assert.New(t)
+	for _, c := range cases {
+		c.Inject(dep)
 		c.Run(assert)
 	}
 }

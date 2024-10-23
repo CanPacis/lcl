@@ -11,19 +11,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var checker = analyzer.NewChecker(pkg.NewScope(), types.NewEnvironment())
-
 type TypeCase struct {
 	In  string
 	Out types.Type
 	Err error
+
+	checker *analyzer.Checker
+}
+
+func (c *TypeCase) Inject(dep *analyzer.Checker) {
+	c.checker = dep
 }
 
 func (c *TypeCase) Run(assert *assert.Assertions) {
 	expr := test.MustParseTypeExpr(test.WithSourceString(c.In))
-	out, err := checker.ResolveType(expr)
+	out, err := c.checker.ResolveType(expr)
 	if c.Err != nil {
-		assert.ErrorIs(wrap(err), c.Err)
+		assert.ErrorIs(err, c.Err)
 	} else {
 		assert.NoError(err)
 	}
@@ -35,16 +39,22 @@ type ExprCase struct {
 	Out      types.Type
 	Err      error
 	Contains string
+
+	checker *analyzer.Checker
+}
+
+func (c *ExprCase) Inject(dep *analyzer.Checker) {
+	c.checker = dep
 }
 
 func (c *ExprCase) Run(assert *assert.Assertions) {
 	expr := test.MustParseExpr(test.WithSourceString(c.In))
-	out, err := checker.ResolveExpr(expr)
+	out, err := c.checker.ResolveExpr(expr)
 	if len(c.Contains) != 0 {
 		assert.ErrorContains(err, c.Contains)
 	}
 	if c.Err != nil {
-		assert.ErrorIs(wrap(err), c.Err)
+		assert.ErrorIs(err, c.Err)
 	} else {
 		assert.NoError(err)
 	}
@@ -52,7 +62,9 @@ func (c *ExprCase) Run(assert *assert.Assertions) {
 }
 
 func TestBuiltinTypes(t *testing.T) {
-	tests := []test.Runner{
+	var checker = analyzer.NewChecker(pkg.NewScope(), types.NewEnvironment())
+
+	tests := []test.Injector[*analyzer.Checker]{
 		&TypeCase{
 			In:  "string",
 			Out: types.String,
@@ -87,11 +99,13 @@ func TestBuiltinTypes(t *testing.T) {
 			Err: nil,
 		},
 	}
-	test.Run(tests, t)
+	test.RunWith(t, tests, checker)
 }
 
 func TestBasicExpr(t *testing.T) {
-	tests := []test.Runner{
+	var checker = analyzer.NewChecker(pkg.NewScope(), types.NewEnvironment())
+
+	tests := []test.Injector[*analyzer.Checker]{
 		&ExprCase{
 			In:  `"string"`,
 			Out: types.String,
@@ -123,7 +137,7 @@ func TestBasicExpr(t *testing.T) {
 			Err: &errs.ResolveError{},
 		},
 	}
-	test.Run(tests, t)
+	test.RunWith(t, tests, checker)
 }
 
 func TestComplexExpr(t *testing.T) {
@@ -133,9 +147,10 @@ func TestComplexExpr(t *testing.T) {
 		In:  []types.Type{types.Int},
 		Out: types.String,
 	})
-	checker = analyzer.NewChecker(scope, types.NewEnvironment())
 
-	tests := []test.Runner{
+	checker := analyzer.NewChecker(scope, types.NewEnvironment())
+
+	tests := []test.Injector[*analyzer.Checker]{
 		&ExprCase{
 			In:  `5 == 6`,
 			Out: types.Bool,
@@ -191,11 +206,13 @@ func TestComplexExpr(t *testing.T) {
 			Err: nil,
 		},
 	}
-	test.Run(tests, t)
+	test.RunWith(t, tests, checker)
 }
 
 func TestResolveErrs(t *testing.T) {
-	tests := []test.Runner{
+	var checker = analyzer.NewChecker(pkg.NewScope(), types.NewEnvironment())
+
+	tests := []test.Injector[*analyzer.Checker]{
 		&ExprCase{
 			In:       "undefined",
 			Out:      types.Empty,
@@ -209,5 +226,5 @@ func TestResolveErrs(t *testing.T) {
 			Contains: string(errs.FN),
 		},
 	}
-	test.Run(tests, t)
+	test.RunWith(t, tests, checker)
 }
