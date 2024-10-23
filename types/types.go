@@ -123,6 +123,34 @@ func NewStruct(pairs ...TypePair) *Struct {
 	return &s
 }
 
+type Template struct {
+	In []Type
+}
+
+func (t *Template) Name() string {
+	in := []string{}
+
+	for _, typ := range t.In {
+		in = append(in, typ.Name())
+	}
+
+	return fmt.Sprintf("template (%s)", strings.Join(in, " "))
+}
+
+func (t *Template) IsRoot() bool {
+	return true
+}
+
+func (t *Template) Base() Type {
+	return nil
+}
+
+func NewTemplate(in []Type) *Template {
+	return &Template{
+		In: in,
+	}
+}
+
 type Fn struct {
 	In  []Type
 	Out Type

@@ -4,10 +4,10 @@ import (
 	"io"
 )
 
-type ParseContext int
+type Context int
 
 const (
-	TOP_LEVEL ParseContext = iota
+	TOP_LEVEL Context = iota
 	STATEMENT
 	ENTRY
 	EXPRESSION
@@ -15,7 +15,7 @@ const (
 	SEQUENCE
 )
 
-var ctxMap = map[ParseContext]string{
+var ctxMap = map[Context]string{
 	TOP_LEVEL:  "top level",
 	STATEMENT:  "statement",
 	ENTRY:      "entry",
@@ -23,36 +23,8 @@ var ctxMap = map[ParseContext]string{
 	SEQUENCE:   "sequence",
 }
 
-func (c ParseContext) String() string {
+func (c Context) String() string {
 	return ctxMap[c]
-}
-
-type Stack[T any] struct {
-	values []T
-}
-
-func (s *Stack[T]) Push(v T) {
-	s.values = append(s.values, v)
-}
-
-func (s *Stack[T]) Pop() T {
-	if len(s.values) == 0 {
-		var t T
-		return t
-	}
-
-	popped := s.values[len(s.values)-1]
-	s.values = s.values[:len(s.values)-1]
-	return popped
-}
-
-func (s Stack[T]) Last() T {
-	if len(s.values) == 0 {
-		var t T
-		return t
-	}
-
-	return s.values[len(s.values)-1]
 }
 
 type File struct {

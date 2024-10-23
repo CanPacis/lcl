@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/CanPacis/go-i18n/errs"
+	"github.com/CanPacis/go-i18n/internal"
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/parser/lexer"
 	"github.com/CanPacis/go-i18n/parser/token"
@@ -21,7 +22,7 @@ type Parser struct {
 	buffer  []token.Token
 
 	errors []error
-	ctx    Stack[ParseContext]
+	ctx    *internal.Stack[Context]
 }
 
 func (p *Parser) advance() token.Token {
@@ -44,7 +45,9 @@ func (p *Parser) skip() {
 }
 
 func (p *Parser) error(err error) {
-	p.errors = append(p.errors, err)
+	if err != nil {
+		p.errors = append(p.errors, err)
+	}
 }
 
 func (p *Parser) expect(kind ...token.Kind) token.Token {
@@ -663,8 +666,7 @@ func (p *Parser) parseStructExpr() ast.TypeExpr {
 		case *ast.MemberExpr:
 			return member
 		default:
-			// TODO: what happened?
-			panic("???")
+			return &ast.EmptyExpr{}
 		}
 	}
 
@@ -710,10 +712,14 @@ func New(file *File) *Parser {
 	parser := &Parser{
 		file:  file.Name,
 		lexer: lexer.New(file.source),
-		ctx:   Stack[ParseContext]{},
+		ctx:   internal.NewStack[Context](),
 	}
 	parser.advance()
 	return parser
+}
+
+func Parse(file *File) (*ast.File, error) {
+	return New(file).Parse()
 }
 
 func ParseStmt(file *File) (ast.Stmt, error) {

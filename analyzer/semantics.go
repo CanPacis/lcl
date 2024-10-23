@@ -97,8 +97,7 @@ func (s *Semantics) ScanFns() *pkg.Scope {
 
 	for name, def := range defs {
 		in := []types.Type{}
-		s.checker.BeginCtx(FN_BODY)
-		s.checker.PushScope()
+		s.checker.scope.Push(pkg.NewScope())
 
 		for _, param := range def.Params {
 			typ, err := s.checker.ResolveType(param.Type)
@@ -106,22 +105,20 @@ func (s *Semantics) ScanFns() *pkg.Scope {
 				s.error(err)
 			}
 			in = append(in, typ)
-			s.checker.Scope().Define(param.Name.Value, typ)
+			s.checker.scope.Last().Define(param.Name.Value, typ)
 		}
 
 		typ, err := s.checker.ResolveExpr(def.Body)
 		if err != nil {
 			s.error(err)
 		}
-		s.checker.PopScope()
-		s.checker.EndCtx()
-
-		s.checker.Scope().Define(name, &types.Fn{
+		s.checker.scope.Pop()
+		s.checker.scope.Last().Define(name, &types.Fn{
 			In:  in,
 			Out: typ,
 		})
 	}
-	return s.checker.Scope()
+	return s.checker.scope.Last()
 }
 
 func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
@@ -135,6 +132,7 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 		if err != nil {
 			s.error(err)
 		}
+
 		// TODO: validate the expression
 		// key.Fields[tag] = field.Value
 		key.Fields[tag] = ""
