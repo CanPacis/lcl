@@ -167,13 +167,26 @@ func (p *Parser) parseDeclStmt() *ast.DeclStmt {
 
 	targets := []*ast.DeclTarget{}
 	for range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-		name := p.parseIdentExpr()
+		var name *ast.IdentExpr
+		var tag *ast.StringLitExpr
+		start := p.current
+
+		switch p.current.Kind {
+		case token.STRING:
+			tag = p.parseStringExpr()
+			p.skip()
+			p.expect(token.AS)
+			p.skip()
+			name = p.parseIdentExpr()
+		case token.IDENT:
+			name = p.parseIdentExpr()
+		default:
+			p.expect(token.STRING, token.IDENT)
+		}
+
 		targets = append(targets, &ast.DeclTarget{
-			Node: name.Node,
-			Tag: &ast.StringLitExpr{
-				Node:  name.Node,
-				Value: name.Value,
-			},
+			Node: ast.NewNode(ast.DeclTargetNode, start.Start, p.current.End),
+			Tag:  tag,
 			Name: name,
 		})
 	}
@@ -694,6 +707,7 @@ func New(file *File) *Parser {
 func ParseStmt(file *File) (ast.Stmt, error) {
 	p := New(file)
 	node := p.parseStmt()
+	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
 		return nil, errs.NewSyntaxError(p.errors, p.file)
@@ -705,6 +719,7 @@ func ParseStmt(file *File) (ast.Stmt, error) {
 func ParseExpr(file *File) (ast.Expr, error) {
 	p := New(file)
 	node := p.parseExpr()
+	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
 		return nil, errs.NewSyntaxError(p.errors, p.file)
@@ -716,6 +731,7 @@ func ParseExpr(file *File) (ast.Expr, error) {
 func ParseTypeExpr(file *File) (ast.TypeExpr, error) {
 	p := New(file)
 	node := p.parseTypeExpr()
+	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
 		return nil, errs.NewSyntaxError(p.errors, p.file)

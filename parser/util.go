@@ -42,20 +42,18 @@ func (c *ContextFrame) Begin(ctx ParseContext) {
 }
 
 func (c *ContextFrame) End() {
+	if len(c.frame) == 0 {
+		return
+	}
 	c.frame = c.frame[:len(c.frame)-1]
 }
 
 func (c ContextFrame) Current() ParseContext {
+	if len(c.frame) == 0 {
+		return TOP_LEVEL
+	}
 	return c.frame[len(c.frame)-1]
 }
-
-// func (p *Parser) peek(n int) token.Token {
-// 	for len(p.buffer) < n {
-// 		p.buffer = append(p.buffer, p.lexer.Next())
-// 	}
-
-// 	return p.buffer[n-1]
-// }
 
 type File struct {
 	Name   string

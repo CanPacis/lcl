@@ -9,6 +9,7 @@ import (
 	"github.com/CanPacis/go-i18n/errs"
 	"github.com/CanPacis/go-i18n/parser"
 	"github.com/CanPacis/go-i18n/parser/ast"
+	"github.com/CanPacis/go-i18n/parser/token"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,49 +47,69 @@ func expr(src string) ast.Expr {
 	return expr
 }
 
-func texpr(src string) ast.TypeExpr {
-	expr, err := parser.ParseTypeExpr(file(src))
-	if err != nil {
-		panic(err)
-	}
-	return expr
-}
+// func texpr(src string) ast.TypeExpr {
+// 	expr, err := parser.ParseTypeExpr(file(src))
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return expr
+// }
 
 type ExprCase struct {
-	In       ast.Expr
+	In       string
 	Out      ast.Expr
 	Err      error
 	Contains string
 }
 
 func (c *ExprCase) Run(assert *assert.Assertions) {
-	fmt.Println(c.In, c.Out)
-	assert.IsType(c.In, c.Out)
-
-	s, _ := json.Marshal(c.In)
-	fmt.Println(string(s))
-	// out, err := checker.ResolveExpr(c.In)
-	// if len(c.Contains) != 0 {
-	// 	assert.ErrorContains(err, c.Contains)
-	// }
-	// if c.Err != nil {
-	// 	assert.ErrorIs(wrap(err), c.Err)
-	// } else {
-	// 	assert.NoError(err)
-	// }
-	// assert.Equal(c.Out.Name(), out.Name())
+	expr, err := parser.ParseExpr(file(c.In))
+	if c.Out != nil {
+		CompareExpr(A{assert}, c.Out, expr)
+	} else {
+		if len(c.Contains) > 0 {
+			assert.ErrorContains(err, c.Contains)
+		} else {
+			if err != nil {
+				assert.Fail(FormatError(err))
+			}
+		}
+	}
 }
 
-func TestParser(t *testing.T) {
+func TestExpr(t *testing.T) {
 	tests := []Runner{
 		&ExprCase{
-			In:  expr("a > 0"),
-			Out: &ast.BinaryExpr{
-				// Operator: token.Token{Kind: token.GT},
-				// Left:     &ast.IdentExpr{Value: "a"},
-				// Right:    &ast.NumberLitExpr{Value: 0},
+			In: "ident",
+			Out: &ast.IdentExpr{
+				Value: "ident",
 			},
 		},
+		&ExprCase{
+			In: "ident < 0",
+			Out: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.LT},
+				Left:     &ast.IdentExpr{Value: "ident"},
+				Right:    &ast.NumberLitExpr{Value: 0},
+			},
+		},
+		&ExprCase{
+			In: "ident >= 0",
+			Out: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.GTE},
+				Left:     &ast.IdentExpr{Value: "ident"},
+				Right:    &ast.NumberLitExpr{Value: 0},
+			},
+		},
+		&ExprCase{
+			In: "ident == ident",
+			Out: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.EQUALS},
+				Left:     &ast.IdentExpr{Value: "ident"},
+				Right:    &ast.IdentExpr{Value: "ident"},
+			},
+		},
+		&ExprCase{In: `""()`, Contains: errs.Unexpected},
 	}
 
 	Run(tests, t)
@@ -97,13 +118,11 @@ func TestParser(t *testing.T) {
 func TestMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	file := file("declare i18n (en)")
+	file := file(`declare i18n ("en-US" as en)`)
 	parser := parser.New(file)
 	ast, err := parser.Parse()
 	assert.NoError(err)
 	b, err := json.MarshalIndent(ast, "", "  ")
 	assert.NoError(err)
 	assert.NotEmpty(b)
-
-	fmt.Println(string(b))
 }
