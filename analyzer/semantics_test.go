@@ -6,7 +6,6 @@ import (
 	"github.com/CanPacis/go-i18n/analyzer"
 	"github.com/CanPacis/go-i18n/errs"
 	"github.com/CanPacis/go-i18n/parser"
-	"github.com/CanPacis/go-i18n/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/language"
 )
@@ -100,28 +99,28 @@ func TestLocalTypeAnalysis(t *testing.T) {
 			},
 			Contains: errs.Unresolved,
 		},
-		&AnalyzerCase{
-			File: Test["TestLocalTypeAnalysis4"],
-			Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
-				s.ScanTypes()
-				scope := s.ScanFns()
+		// &AnalyzerCase{
+		// 	File: Test["TestLocalTypeAnalysis4"],
+		// 	Test: func(s *analyzer.Semantics, assert *assert.Assertions) {
+		// 		s.ScanTypes()
+		// 		scope := s.ScanFns()
 
-				exports := scope.Exports()
-				p1 := exports["p1"].(*types.Fn)
-				p2 := exports["p2"].(*types.Fn)
-				p3 := exports["p3"].(*types.Fn)
+		// 		exports := scope.Exports()
+		// 		p1 := exports["p1"].(*types.Fn)
+		// 		p2 := exports["p2"].(*types.Fn)
+		// 		p3 := exports["p3"].(*types.Fn)
 
-				assert.Equal([]types.Type{types.Time}, p1.In)
-				assert.Equal(types.String, p1.Out)
+		// 		assert.Equal([]types.Type{types.Time}, p1.In)
+		// 		assert.Equal(types.String, p1.Out)
 
-				assert.Equal([]types.Type{types.Time}, p2.In)
-				assert.Equal(types.Int, p2.Out)
+		// 		assert.Equal([]types.Type{types.Time}, p2.In)
+		// 		assert.Equal(types.Int, p2.Out)
 
-				assert.Equal([]types.Type{types.Time}, p3.In)
-				assert.Equal(types.Int, p3.Out)
-			},
-			Contains: errs.NotAssignable,
-		},
+		// 		assert.Equal([]types.Type{types.Time}, p3.In)
+		// 		assert.Equal(types.Int, p3.Out)
+		// 	},
+		// 	Contains: errs.NotAssignable,
+		// },
 	}
 
 	Run(tests, t)

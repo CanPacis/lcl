@@ -66,10 +66,6 @@ func NewScope() *Scope {
 				In:  []types.Type{types.Int},
 				Out: types.String,
 			},
-			"year": &types.Fn{
-				In:  []types.Type{types.Time},
-				Out: types.Int,
-			},
 		},
 	}
 }

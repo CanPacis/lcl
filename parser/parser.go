@@ -366,6 +366,7 @@ func (p *Parser) parseGroupExpr() ast.Expr {
 }
 
 var operators = []token.Kind{
+	token.AND, token.OR,
 	token.EQUALS, token.NOT_EQUALS,
 	token.GT, token.GTE,
 	token.LT, token.LTE,

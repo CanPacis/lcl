@@ -140,6 +140,13 @@ type BinaryExpr struct {
 	Right    Expr
 }
 
+type ArithmeticExpr struct {
+	Node
+	Operator token.Token
+	Left     Expr
+	Right    Expr
+}
+
 type TernaryExpr struct {
 	Node
 	Predicate Expr
@@ -218,6 +225,7 @@ type TypePair struct {
 }
 
 func (e *BinaryExpr) exprNode()      {}
+func (e *ArithmeticExpr) exprNode()  {}
 func (e *TernaryExpr) exprNode()     {}
 func (e *CallExpr) exprNode()        {}
 func (e *MemberExpr) exprNode()      {}

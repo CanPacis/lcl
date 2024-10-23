@@ -22,7 +22,6 @@ var String = &constant{"string"}
 var Int = &constant{"int"}
 var Float = &constant{"float"}
 var Bool = &constant{"bool"}
-var Time = &constant{"time"}
 var Empty = &constant{"empty"}
 
 type List struct {

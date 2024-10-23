@@ -49,7 +49,6 @@ func NewEnvironment() *Environment {
 			"int":    Int,
 			"float":  Float,
 			"bool":   Bool,
-			"time":   Time,
 		},
 	}
 }

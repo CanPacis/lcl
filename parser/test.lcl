@@ -7,6 +7,10 @@ fn(t::time.Time) Year time.Year(t)
 #test: Section0
 declare i18n (en)
 
+fn(s::string n::int) Plural `{s}{(n > 1) || (n == 0) ? "s" : ""}`
+
+fn(n::int) Count n == 0 ? "no" : string(n)
+
 section S {
   K {
     en "String"

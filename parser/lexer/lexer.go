@@ -22,7 +22,7 @@ var (
 		"section": token.SECTION,
 	}
 
-	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*'}
+	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*', '&'}
 
 	EOF = token.Token{
 		Kind:    token.EOF,
@@ -200,6 +200,20 @@ func (l *Lexer) lexSpecial() token.Token {
 		if l.current == '=' {
 			l.advance()
 			tk = l.token(token.NOT_EQUALS)
+		}
+	case '&':
+		l.advance()
+
+		if l.current == '&' {
+			l.advance()
+			tk = l.token(token.AND)
+		}
+	case '|':
+		l.advance()
+
+		if l.current == '|' {
+			l.advance()
+			tk = l.token(token.OR)
 		}
 	case '>':
 		l.advance()

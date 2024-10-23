@@ -57,8 +57,10 @@ const (
 	STAR
 
 	// Delimeter
-	ARITHMETIC
+	LOGICAL
 
+	AND
+	OR
 	EQUALS
 	NOT_EQUALS
 	GT
@@ -110,8 +112,10 @@ var tokenMap = map[Kind]string{
 	QUESTION_MARK:        "?",
 	STAR:                 "*",
 
-	ARITHMETIC: "arithmetic",
+	LOGICAL: "logical",
 
+	AND:        "&&",
+	OR:         "||",
 	EQUALS:     "==",
 	NOT_EQUALS: "!=",
 	GT:         ">",
@@ -144,11 +148,11 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	if t.Kind > PUNCTUATION && t.Kind < ARITHMETIC {
+	if t.Kind > PUNCTUATION && t.Kind < LOGICAL {
 		return fmt.Sprintf("%s %s", PUNCTUATION.String(), t.Kind.String())
 	}
-	if t.Kind > ARITHMETIC && t.Kind < LITERAL {
-		return fmt.Sprintf("%s %s", ARITHMETIC.String(), t.Kind.String())
+	if t.Kind > LOGICAL && t.Kind < LITERAL {
+		return fmt.Sprintf("%s %s", LOGICAL.String(), t.Kind.String())
 	}
 	if t.Kind > KEYWORD {
 		return fmt.Sprintf("%s <%s>", KEYWORD.String(), t.Literal)
