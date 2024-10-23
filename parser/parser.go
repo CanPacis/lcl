@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"iter"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -500,7 +501,6 @@ func (p *Parser) parseMemberExpr() ast.Expr {
 	}
 
 	p.advance()
-	// err position := p.current
 	rhs := p.parseMemberExpr()
 
 	member := memberOf(lhs, rhs)
@@ -612,50 +612,39 @@ func (p *Parser) parseNumberExpr() *ast.NumberLitExpr {
 // Type Expressions
 
 func (p *Parser) parseTypeExpr() ast.TypeExpr {
-	var lhs ast.TypeExpr
-
-	switch p.current.Kind {
-	case token.LEFT_CURLY_BRACE:
-		lhs = p.parseStructExpr()
-	case token.IDENT:
-		lhs = p.parseTypeMemberExpr()
-	default:
-		p.expect()
-		return &ast.EmptyExpr{
-			Node: ast.NewNode(ast.EmptyExprNode, p.current.Start, p.current.End),
-		}
-	}
+	lhs := p.parseStructExpr()
 
 	if p.current.Kind != token.LEFT_SQUARE_BRACKET {
 		return lhs
 	}
-	p.expect(token.LEFT_SQUARE_BRACKET)
-	end := p.expect(token.RIGHT_SQUARE_BRACKET)
 
-	return &ast.ListTypeExpr{
-		Node: ast.NewNode(ast.ListTypeExprNode, lhs.Start(), end.End),
-		Type: lhs,
-	}
+	fmt.Println(reflect.TypeOf(lhs), p.current)
+	fmt.Println(reflect.TypeOf(p.parseTypeExpr()))
+	// p.advance()
+	// end := p.expect(token.RIGHT_SQUARE_BRACKET)
+
+	// return &ast.ListTypeExpr{
+	// 	Node: ast.NewNode(ast.ListTypeExprNode, lhs.Start(), end.End),
+	// 	Type: lhs,
+	// }
+	return nil
 }
 
-func (p *Parser) parseTypeMemberExpr() ast.TypeExpr {
-	ident := p.parseIdentExpr()
+func (p *Parser) parseStructExpr() ast.TypeExpr {
+	if p.current.Kind == token.IDENT {
+		member := p.parseMemberExpr()
 
-	if p.current.Kind != token.DOT {
-		return ident
+		switch member := member.(type) {
+		case *ast.IdentExpr:
+			return member
+		case *ast.MemberExpr:
+			return member
+		default:
+			// TODO: what happened?
+			panic("???")
+		}
 	}
 
-	p.advance()
-	rhs := p.parseIdentExpr()
-
-	return &ast.TypeMemberExpr{
-		Node:  ast.NewNode(ast.TypeMemberExprNode, ident.Start(), rhs.End()),
-		Left:  ident,
-		Right: rhs,
-	}
-}
-
-func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 	start := p.current
 
 	list := []*ast.TypePair{}
@@ -664,8 +653,8 @@ func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 	}
 
 	return &ast.StructLitExpr{
-		Node: ast.NewNode(ast.StructLitExprNode, start.Start, p.current.End),
-		List: list,
+		Node:   ast.NewNode(ast.StructLitExprNode, start.Start, p.current.End),
+		Fields: list,
 	}
 }
 

@@ -241,13 +241,13 @@ type EmptyExpr struct {
 	Node `json:"node"`
 }
 
-const TypeMemberExprNode = "type_member_expr"
+// const TypeMemberExprNode = "type_member_expr"
 
-type TypeMemberExpr struct {
-	Node  `json:"node"`
-	Left  *IdentExpr `json:"left"`
-	Right *IdentExpr `json:"right"`
-}
+// type TypeMemberExpr struct {
+// 	Node  `json:"node"`
+// 	Left  *IdentExpr `json:"left"`
+// 	Right *IdentExpr `json:"right"`
+// }
 
 const ListTypeExprNode = "list_type_expr"
 
@@ -259,8 +259,8 @@ type ListTypeExpr struct {
 const StructLitExprNode = "struct_literal_expr"
 
 type StructLitExpr struct {
-	Node `json:"node"`
-	List []*TypePair `json:"list"`
+	Node   `json:"node"`
+	Fields []*TypePair `json:"list"`
 }
 
 const TypePairNode = "type_pair"
@@ -285,8 +285,8 @@ func (e *TemplateLitExpr) exprNode() {}
 func (e *NumberLitExpr) exprNode()   {}
 func (e *EmptyExpr) exprNode()       {}
 
-func (e *IdentExpr) tExprNode()      {}
-func (e *TypeMemberExpr) tExprNode() {}
-func (e *ListTypeExpr) tExprNode()   {}
-func (e *StructLitExpr) tExprNode()  {}
-func (e *EmptyExpr) tExprNode()      {}
+func (e *IdentExpr) tExprNode()     {}
+func (e *MemberExpr) tExprNode()    {}
+func (e *ListTypeExpr) tExprNode()  {}
+func (e *StructLitExpr) tExprNode() {}
+func (e *EmptyExpr) tExprNode()     {}

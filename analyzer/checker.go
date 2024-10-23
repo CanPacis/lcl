@@ -1,8 +1,6 @@
 package analyzer
 
 import (
-	"errors"
-
 	"github.com/CanPacis/go-i18n/errs"
 	pkg "github.com/CanPacis/go-i18n/package"
 	"github.com/CanPacis/go-i18n/parser/ast"
@@ -99,23 +97,25 @@ func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
 
 	switch expr := expr.(type) {
 	case *ast.IdentExpr:
-		typ, ok := c.env.Lookup(expr.Value, "")
+		typ, ok := c.env.Lookup(expr.Value)
 		if ok {
 			return typ, nil
 		}
 
 		err.Value = expr.Value
-	case *ast.TypeMemberExpr:
-		typ, ok := c.env.Lookup(expr.Right.Value, expr.Left.Value)
-		if ok {
-			return typ, nil
-		}
+	case *ast.MemberExpr:
+		// typ, ok := c.env.Lookup(expr.Right.Value, expr.Left.Value)
+		// if ok {
+		// 	return typ, nil
+		// }
 
-		err.Value = expr.Left.Value + "." + expr.Right.Value
+		// err.Value = expr.Left.Value + "." + expr.Right.Value
+		// TODO: implement
+		panic("not implemented")
 	case *ast.StructLitExpr:
 		pairs := []types.TypePair{}
 
-		for _, field := range expr.List {
+		for _, field := range expr.Fields {
 			typ, err := c.ResolveType(field.Type)
 			if err != nil {
 				return types.Empty, err
@@ -132,8 +132,6 @@ func (c *Checker) ResolveType(expr ast.TypeExpr) (types.Type, error) {
 		}
 
 		return types.NewList(typ), nil
-	default:
-		return types.Empty, errors.New("???")
 	}
 
 	return types.Empty, err

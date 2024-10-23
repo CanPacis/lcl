@@ -144,6 +144,7 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `call(param1 param2)`},
 		&ExprCase{In: `call(param.of index[0])`},
 		&ExprCase{In: `call(param.of (a || b) 6)`},
+		&ExprCase{In: `call()()`},
 		&ExprCase{In: `call(param.of a || (b 6))`, Contains: errs.Unexpected},
 		&ExprCase{
 			In: `call(param.of a || b 6)`,
@@ -169,6 +170,76 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `call(true ? a == b : a || c)`},
 	}
 
+	test.Run(t, tests)
+}
+
+type TypeExprCase struct {
+	In       string
+	Out      ast.TypeExpr
+	Err      error
+	Contains string
+}
+
+func (c *TypeExprCase) Run(assert *assert.Assertions) {
+	expr, err := test.ParseTypeExpr(test.WithSourceString(c.In))
+
+	if c.Out != nil {
+		CompareTypeExpr(A{assert}, c.Out, expr)
+	} else {
+		if len(c.Contains) > 0 {
+			assert.ErrorContains(err, c.Contains)
+		} else {
+			if err != nil {
+				assert.Fail(test.FormatError(err))
+			}
+		}
+	}
+}
+
+func TestTypeExpr(t *testing.T) {
+	tests := []test.Runner{
+		// &TypeExprCase{
+		// 	In:  "string",
+		// 	Out: &ast.IdentExpr{Value: "string"},
+		// },
+		// &TypeExprCase{
+		// 	In: "int[]",
+		// 	Out: &ast.ListTypeExpr{
+		// 		Type: &ast.IdentExpr{Value: "int"},
+		// 	},
+		// },
+		// &TypeExprCase{
+		// 	In: "time.Time",
+		// 	Out: &ast.MemberExpr{
+		// 		Left:  &ast.IdentExpr{Value: "time"},
+		// 		Right: &ast.IdentExpr{Value: "Time"},
+		// 	},
+		// },
+		// &TypeExprCase{
+		// 	In:  "{}",
+		// 	Out: &ast.StructLitExpr{Fields: []*ast.TypePair{}},
+		// },
+		// &TypeExprCase{
+		// 	In: "time.Time[]",
+		// 	Out: &ast.ListTypeExpr{
+		// 		Type: &ast.MemberExpr{
+		// 			Left:  &ast.IdentExpr{Value: "time"},
+		// 			Right: &ast.IdentExpr{Value: "Time"},
+		// 		},
+		// 	},
+		// },
+		&TypeExprCase{
+			In: "time.Time[][]",
+			// Out: &ast.ListTypeExpr{
+			// 	Type: &ast.ListTypeExpr{
+			// 		Type: &ast.MemberExpr{
+			// 			Left:  &ast.IdentExpr{Value: "time"},
+			// 			Right: &ast.IdentExpr{Value: "Time"},
+			// 		},
+			// 	},
+			// },
+		},
+	}
 	test.Run(t, tests)
 }
 

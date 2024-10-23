@@ -98,3 +98,33 @@ func CompareNumber(assert A, left *ast.NumberLitExpr, right ast.Expr) {
 	r := right.(*ast.NumberLitExpr)
 	assert.Equal(left.Value, r.Value)
 }
+
+func CompareTypeExpr(assert A, left ast.TypeExpr, right ast.TypeExpr) {
+	switch left := left.(type) {
+	case *ast.IdentExpr:
+		assert.IsType(left, right)
+		r := right.(*ast.IdentExpr)
+		assert.Equal(left.Value, r.Value)
+	case *ast.MemberExpr:
+		assert.IsType(left, right)
+		r := right.(*ast.MemberExpr)
+
+		CompareExpr(assert, left.Left, r.Left)
+		CompareIdent(assert, left.Right, r.Right)
+	case *ast.ListTypeExpr:
+		assert.IsType(left, right)
+		r := right.(*ast.ListTypeExpr)
+		CompareTypeExpr(assert, left.Type, r.Type)
+	case *ast.StructLitExpr:
+		assert.IsType(left, right)
+		r := right.(*ast.StructLitExpr)
+
+		assert.Equal(len(left.Fields), len(r.Fields), "Struct literal has invalid number of fields")
+
+		for i, typ := range left.Fields {
+			CompareTypeExpr(assert, typ.Type, r.Fields[i].Type)
+		}
+	case *ast.EmptyExpr:
+		assert.Fail("Left hand side is empty", left)
+	}
+}

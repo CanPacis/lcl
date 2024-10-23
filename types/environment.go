@@ -18,16 +18,7 @@ func (e *Environment) Define(name string, typ Type) {
 	e.types[name] = typ
 }
 
-func (e Environment) Lookup(name, prefix string) (Type, bool) {
-	if len(prefix) > 0 {
-		env := e.imports[prefix]
-		if env == nil {
-			return Empty, false
-		}
-
-		return env.Lookup(name, "")
-	}
-
+func (e Environment) Lookup(name string) (Type, bool) {
 	typ, ok := e.builtin[name]
 	if ok {
 		return typ, ok

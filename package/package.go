@@ -25,15 +25,6 @@ func (s *Scope) Define(name string, typ types.Type) {
 }
 
 func (s Scope) Lookup(name string) (types.Type, bool) {
-	// if len(prefix) > 0 {
-	// 	scope := s.imports[prefix]
-	// 	if scope == nil {
-	// 		return nil, false
-	// 	}
-
-	// 	return scope.Lookup(name, "")
-	// }
-
 	if s.parent != nil {
 		typ, ok := s.objects[name]
 		if ok {
