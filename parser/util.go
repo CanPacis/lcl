@@ -1,6 +1,8 @@
 package parser
 
-import "io"
+import (
+	"io"
+)
 
 type ParseContext int
 
@@ -9,6 +11,7 @@ const (
 	STATEMENT
 	ENTRY
 	EXPRESSION
+	TYPE_EXPRESSION
 	SEQUENCE
 )
 
@@ -24,35 +27,32 @@ func (c ParseContext) String() string {
 	return ctxMap[c]
 }
 
-type ContextFrame struct {
-	frame []ParseContext
-	init  bool
+type Stack[T any] struct {
+	values []T
 }
 
-func (c *ContextFrame) Init() {
-	if c.init {
-		return
+func (s *Stack[T]) Push(v T) {
+	s.values = append(s.values, v)
+}
+
+func (s *Stack[T]) Pop() T {
+	if len(s.values) == 0 {
+		var t T
+		return t
 	}
-	c.frame = append(c.frame, TOP_LEVEL)
-	c.init = true
+
+	popped := s.values[len(s.values)-1]
+	s.values = s.values[:len(s.values)-1]
+	return popped
 }
 
-func (c *ContextFrame) Begin(ctx ParseContext) {
-	c.frame = append(c.frame, ctx)
-}
-
-func (c *ContextFrame) End() {
-	if len(c.frame) == 0 {
-		return
+func (s Stack[T]) Last() T {
+	if len(s.values) == 0 {
+		var t T
+		return t
 	}
-	c.frame = c.frame[:len(c.frame)-1]
-}
 
-func (c ContextFrame) Current() ParseContext {
-	if len(c.frame) == 0 {
-		return TOP_LEVEL
-	}
-	return c.frame[len(c.frame)-1]
+	return s.values[len(s.values)-1]
 }
 
 type File struct {

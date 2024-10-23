@@ -94,7 +94,7 @@ func TestSpecialChars(t *testing.T) {
 	tests := CaseList{
 		{
 			skipsWhitespace: true,
-			Input:           "( ) { } [ ] . , ::: ? == != > >= < <= *",
+			Input:           "( ) { } [ ] . , ::: ? == != > >= < <= * + - / % ^",
 			Expected: []Expectation{
 				Exp(token.LEFT_PARENS, "(", 1, 1),
 				Exp(token.RIGHT_PARENS, ")", 1, 3),
@@ -114,6 +114,11 @@ func TestSpecialChars(t *testing.T) {
 				Exp(token.LT, "<", 1, 34),
 				Exp(token.LTE, "<=", 1, 36),
 				Exp(token.STAR, "*", 1, 39),
+				Exp(token.PLUS, "+", 1, 41),
+				Exp(token.MINUS, "-", 1, 43),
+				Exp(token.FORWARD_SLASH, "/", 1, 45),
+				Exp(token.PERCENT, "%", 1, 47),
+				Exp(token.CARET, "^", 1, 49),
 			},
 		},
 	}
@@ -221,7 +226,7 @@ func TestNumber(t *testing.T) {
 			skipsWhitespace: true,
 			Input:           "- 0 -3 04 0. 0.3 245 36.6 -2 -0.1 -0",
 			Expected: []Expectation{
-				Exp(token.ILLEGAL, "-", 1, 1),
+				Exp(token.MINUS, "-", 1, 1),
 				Exp(token.NUMBER, "0", 1, 3),
 				Exp(token.NUMBER, "-3", 1, 5),
 				Exp(token.ILLEGAL, "04", 1, 8),

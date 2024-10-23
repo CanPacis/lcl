@@ -140,8 +140,16 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `index.of[0]`},
 		&ExprCase{In: `index.of[invalid]`, Contains: errs.Unexpected},
 		&ExprCase{In: `call(param)`},
-		&ExprCase{In: `call(param1 param2)`},
-		&ExprCase{In: `call(param1 param2)`},
+		&ExprCase{
+			In: `call(param1 param2)`,
+			Out: &ast.CallExpr{
+				Fn: &ast.IdentExpr{Value: "call"},
+				Args: []ast.Expr{
+					&ast.IdentExpr{Value: "param1"},
+					&ast.IdentExpr{Value: "param2"},
+				},
+			},
+		},
 		&ExprCase{In: `call(param.of index[0])`},
 		&ExprCase{In: `call(param.of (a || b) 6)`},
 		&ExprCase{In: `call()()`},
@@ -198,46 +206,46 @@ func (c *TypeExprCase) Run(assert *assert.Assertions) {
 
 func TestTypeExpr(t *testing.T) {
 	tests := []test.Runner{
-		// &TypeExprCase{
-		// 	In:  "string",
-		// 	Out: &ast.IdentExpr{Value: "string"},
-		// },
-		// &TypeExprCase{
-		// 	In: "int[]",
-		// 	Out: &ast.ListTypeExpr{
-		// 		Type: &ast.IdentExpr{Value: "int"},
-		// 	},
-		// },
-		// &TypeExprCase{
-		// 	In: "time.Time",
-		// 	Out: &ast.MemberExpr{
-		// 		Left:  &ast.IdentExpr{Value: "time"},
-		// 		Right: &ast.IdentExpr{Value: "Time"},
-		// 	},
-		// },
-		// &TypeExprCase{
-		// 	In:  "{}",
-		// 	Out: &ast.StructLitExpr{Fields: []*ast.TypePair{}},
-		// },
-		// &TypeExprCase{
-		// 	In: "time.Time[]",
-		// 	Out: &ast.ListTypeExpr{
-		// 		Type: &ast.MemberExpr{
-		// 			Left:  &ast.IdentExpr{Value: "time"},
-		// 			Right: &ast.IdentExpr{Value: "Time"},
-		// 		},
-		// 	},
-		// },
+		&TypeExprCase{
+			In:  "string",
+			Out: &ast.IdentExpr{Value: "string"},
+		},
+		&TypeExprCase{
+			In: "int[]",
+			Out: &ast.ListTypeExpr{
+				Type: &ast.IdentExpr{Value: "int"},
+			},
+		},
+		&TypeExprCase{
+			In: "time.Time",
+			Out: &ast.MemberExpr{
+				Left:  &ast.IdentExpr{Value: "time"},
+				Right: &ast.IdentExpr{Value: "Time"},
+			},
+		},
+		&TypeExprCase{
+			In:  "{}",
+			Out: &ast.StructLitExpr{Fields: []*ast.TypePair{}},
+		},
+		&TypeExprCase{
+			In: "time.Time[]",
+			Out: &ast.ListTypeExpr{
+				Type: &ast.MemberExpr{
+					Left:  &ast.IdentExpr{Value: "time"},
+					Right: &ast.IdentExpr{Value: "Time"},
+				},
+			},
+		},
 		&TypeExprCase{
 			In: "time.Time[][]",
-			// Out: &ast.ListTypeExpr{
-			// 	Type: &ast.ListTypeExpr{
-			// 		Type: &ast.MemberExpr{
-			// 			Left:  &ast.IdentExpr{Value: "time"},
-			// 			Right: &ast.IdentExpr{Value: "Time"},
-			// 		},
-			// 	},
-			// },
+			Out: &ast.ListTypeExpr{
+				Type: &ast.ListTypeExpr{
+					Type: &ast.MemberExpr{
+						Left:  &ast.IdentExpr{Value: "time"},
+						Right: &ast.IdentExpr{Value: "Time"},
+					},
+				},
+			},
 		},
 	}
 	test.Run(t, tests)

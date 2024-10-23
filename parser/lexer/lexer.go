@@ -23,7 +23,10 @@ var (
 		"section": token.SECTION,
 	}
 
-	special = []rune{'{', '}', '(', ')', '.', ';', ',', '[', ']', '>', '<', '=', ':', '?', '!', '|', '`', '*', '&', '_'}
+	special = []rune{
+		'{', '}', '(', ')', '.', ';', ',', '[', ']', '-', '+', '/',
+		'>', '<', '=', ':', '?', '!', '|', '`', '*', '&', '_', '%', '^',
+	}
 
 	EOF = token.Token{
 		Kind:    token.EOF,
@@ -123,11 +126,6 @@ func (l *Lexer) Next() token.Token {
 		return l.lexTemplateLit()
 	case '#':
 		return l.lexComment()
-	case '-':
-		return l.lexNumber()
-	case '*':
-		l.advance()
-		return l.token(token.STAR)
 	case eof:
 		return EOF
 	default:
@@ -176,6 +174,29 @@ func (l *Lexer) lexSpecial() token.Token {
 	case ',':
 		l.advance()
 		tk = l.token(token.COMMA)
+	case '^':
+		l.advance()
+		tk = l.token(token.CARET)
+	case '*':
+		l.advance()
+		return l.token(token.STAR)
+	case '+':
+		l.advance()
+		return l.token(token.PLUS)
+	case '-':
+		l.advance()
+
+		if unicode.IsDigit(l.current) {
+			return l.lexNumber()
+		} else {
+			tk = l.token(token.MINUS)
+		}
+	case '/':
+		l.advance()
+		return l.token(token.FORWARD_SLASH)
+	case '%':
+		l.advance()
+		return l.token(token.PERCENT)
 	case ':':
 		l.advance()
 
@@ -255,9 +276,7 @@ func (l *Lexer) lexAlphanumeric() token.Token {
 }
 
 func (l *Lexer) lexNumber() token.Token {
-	if l.current == '-' {
-		l.advance()
-
+	if l.last() == '-' {
 		if !unicode.IsDigit(l.current) {
 			return l.token(token.ILLEGAL)
 		}

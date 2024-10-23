@@ -62,6 +62,11 @@ const (
 	DOUBLE_COLON
 	QUESTION_MARK
 	STAR
+	PLUS
+	MINUS
+	FORWARD_SLASH
+	PERCENT
+	CARET
 
 	// Delimeter
 	LOGICAL
@@ -119,6 +124,10 @@ var tokenMap = map[Kind]string{
 	DOUBLE_COLON:         "::",
 	QUESTION_MARK:        "?",
 	STAR:                 "*",
+	PLUS:                 "+",
+	MINUS:                "-",
+	FORWARD_SLASH:        "/",
+	PERCENT:              "%",
 
 	LOGICAL: "logical",
 
