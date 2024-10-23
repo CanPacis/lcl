@@ -37,7 +37,7 @@ func (s Semantics) ScanName() string {
 func (s *Semantics) ScanTargets() []language.Tag {
 	targets := []language.Tag{}
 
-	for _, node := range s.ast.Decl.List {
+	for _, node := range s.ast.Decl.Targets {
 		tag, err := s.checker.RegisterTarget(node)
 		if err != nil {
 			s.error(err)
@@ -135,16 +135,13 @@ func (s *Semantics) extractKeyEntry(entry *ast.KeyEntry) *Key {
 	}
 
 	for _, field := range entry.Fields {
-		switch field := field.(type) {
-		case *ast.StringField:
-			tag, err := s.checker.LookupTag(field.Tag)
-			if err != nil {
-				s.error(err)
-			}
-			key.Fields[tag] = field.Value.Value
-		default:
-			panic("wtf dude")
+		tag, err := s.checker.LookupTag(field.Tag)
+		if err != nil {
+			s.error(err)
 		}
+		// TODO: validate the expression
+		// key.Fields[tag] = field.Value
+		key.Fields[tag] = ""
 	}
 
 	for name, tag := range s.checker.tags {
@@ -179,17 +176,13 @@ func (s *Semantics) extractTemplateEntry(entry *ast.TemplateEntry) *Template {
 	}
 
 	for _, field := range entry.Fields {
-		switch field := field.(type) {
-		case *ast.TemplateField:
-			tag, err := s.checker.LookupTag(field.Tag)
-			if err != nil {
-				s.error(err)
-			}
-
-			template.Fields[tag] = 0
-		default:
-			panic("wtf dude")
+		tag, err := s.checker.LookupTag(field.Tag)
+		if err != nil {
+			s.error(err)
 		}
+
+		// TODO: validate the expression, and figure out what to do with field value
+		template.Fields[tag] = 0
 	}
 
 	for name, tag := range s.checker.tags {

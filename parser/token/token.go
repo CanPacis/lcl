@@ -1,10 +1,13 @@
 package token
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type Position struct {
-	Line   int
-	Column int
+	Line   int `json:"line"`
+	Column int `json:"column"`
 }
 
 func (p Position) String() string {
@@ -25,6 +28,10 @@ func (k Kind) String() string {
 		return tokenMap[UNKNOWN]
 	}
 	return tokenMap[k]
+}
+
+func (k Kind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.String())
 }
 
 const (
@@ -140,11 +147,11 @@ var tokenMap = map[Kind]string{
 }
 
 type Token struct {
-	Kind    Kind
-	Literal string
-	Raw     string
-	Start   Position
-	End     Position
+	Kind    Kind     `json:"kind"`
+	Literal string   `json:"literal"`
+	Raw     string   `json:"raw"`
+	Start   Position `json:"start"`
+	End     Position `json:"end"`
 }
 
 func (t Token) String() string {

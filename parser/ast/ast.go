@@ -5,15 +5,19 @@ import (
 )
 
 type Node interface {
+	NodeType() string
+
 	Start() token.Position
 	End() token.Position
 }
 
+const FileNode = "file"
+
 type File struct {
-	Node
-	Decl    *DeclStmt
-	Imports []*ImportStmt
-	Stmts   []Stmt
+	Node    `json:"node"`
+	Decl    *DeclStmt     `json:"decl"`
+	Imports []*ImportStmt `json:"imports"`
+	Stmts   []Stmt        `json:"stmts"`
 }
 
 type Stmt interface {
@@ -22,51 +26,75 @@ type Stmt interface {
 	stmtNode()
 }
 
-type DeclStmt struct {
-	Stmt
-	Name *IdentExpr
-	List []*IdentExpr
+const DeclTargetNode = "decl_target"
+
+type DeclTarget struct {
+	Node `json:"node"`
+	Tag  *StringLitExpr `json:"tag"`
+	Name *IdentExpr     `json:"name"`
 }
+
+const DeclStmtNode = "decl_stmt"
+
+type DeclStmt struct {
+	Stmt    `json:"node"`
+	Name    *IdentExpr    `json:"name"`
+	Targets []*DeclTarget `json:"targets"`
+}
+
+const ImportStmtNode = "import_stmt"
 
 type ImportStmt struct {
-	Stmt
-	List []*IdentExpr
+	Stmt `json:"node"`
+	List []*IdentExpr `json:"list"`
 }
+
+const TypeDefStmtNode = "type_def_stmt"
 
 type TypeDefStmt struct {
-	Stmt
-	Name *IdentExpr
-	Type TypeExpr
+	Stmt `json:"node"`
+	Name *IdentExpr `json:"name"`
+	Type TypeExpr   `json:"type"`
 }
+
+const ParameterNode = "parameter"
 
 type Parameter struct {
-	Node
-	Index int
-	Name  *IdentExpr
-	Type  TypeExpr
+	Node  `json:"node"`
+	Index int        `json:"index"`
+	Name  *IdentExpr `json:"name"`
+	Type  TypeExpr   `json:"type"`
 }
+
+const FnDefStmtNode = "fn_def_stmt"
 
 type FnDefStmt struct {
-	Stmt
-	Name   *IdentExpr
-	Params []*Parameter
-	Body   Expr
+	Stmt   `json:"node"`
+	Name   *IdentExpr   `json:"name"`
+	Params []*Parameter `json:"params"`
+	Body   Expr         `json:"body"`
 }
+
+const SectionStmtNode = "section_stmt"
 
 type SectionStmt struct {
-	Stmt
-	Name *IdentExpr
-	Body []Entry
+	Stmt `json:"node"`
+	Name *IdentExpr `json:"name"`
+	Body []Entry    `json:"body"`
 }
+
+const CommentStmtNode = "comment_stmt"
 
 type CommentStmt struct {
-	Stmt
-	Literal string
-	Raw     string
+	Stmt    `json:"node"`
+	Literal string `json:"literal"`
+	Raw     string `json:"raw"`
 }
 
+const EmptyStmtNode = "empty_stmt"
+
 type EmptyStmt struct {
-	Stmt
+	Stmt `json:"node"`
 }
 
 type Entry interface {
@@ -74,23 +102,28 @@ type Entry interface {
 	entryNode()
 }
 
+const KeyEntryNode = "key_entry"
+
 type KeyEntry struct {
-	Node
-	Name   *IdentExpr
-	Fields []Field
+	Node   `json:"node"`
+	Name   *IdentExpr `json:"name"`
+	Fields []*Field   `json:"fields"`
 }
+
+const TemplateEntryNode = "template_entry"
 
 type TemplateEntry struct {
-	Node
-	Partitioned bool
-	Name        *IdentExpr
-	Fields      []Field
-	// Type        TypeExpr
-	Params []*Parameter
+	Node        `json:"node"`
+	Partitioned bool         `json:"partitioned"`
+	Name        *IdentExpr   `json:"name"`
+	Fields      []*Field     `json:"fields"`
+	Params      []*Parameter `json:"params"`
 }
 
+const EmptyEntryNode = "empty_entry"
+
 type EmptyEntry struct {
-	Node
+	Node `json:"node"`
 }
 
 func (e *SectionStmt) entryNode()   {}
@@ -98,29 +131,12 @@ func (e *KeyEntry) entryNode()      {}
 func (e *TemplateEntry) entryNode() {}
 func (e *EmptyEntry) entryNode()    {}
 
-type Field interface {
-	Node
-	Target() string
-}
+const FieldNode = "field"
 
-type StringField struct {
-	Node
-	Tag   *IdentExpr
-	Value *StringLitExpr
-}
-
-func (f *StringField) Target() string {
-	return f.Tag.Value
-}
-
-type TemplateField struct {
-	Node
-	Tag   *IdentExpr
-	Value *TemplateLitExpr
-}
-
-func (f *TemplateField) Target() string {
-	return f.Tag.Value
+type Field struct {
+	Node  `json:"node"`
+	Tag   *IdentExpr `json:"tag"`
+	Value Expr       `json:"value"`
 }
 
 type Expr interface {
@@ -133,95 +149,127 @@ type TypeExpr interface {
 	tExprNode()
 }
 
+const BinaryExprNode = "binary_expr"
+
 type BinaryExpr struct {
-	Node
-	Operator token.Token
-	Left     Expr
-	Right    Expr
+	Node     `json:"node"`
+	Operator token.Token `json:"operator"`
+	Left     Expr        `json:"left"`
+	Right    Expr        `json:"right"`
 }
+
+const ArithmeticExprNode = "arithmetic_expr"
 
 type ArithmeticExpr struct {
-	Node
-	Operator token.Token
-	Left     Expr
-	Right    Expr
+	Node     `json:"node"`
+	Operator token.Token `json:"operator"`
+	Left     Expr        `json:"left"`
+	Right    Expr        `json:"right"`
 }
+
+const TernaryExprNode = "ternary_expr"
 
 type TernaryExpr struct {
-	Node
-	Predicate Expr
-	Left      Expr
-	Right     Expr
+	Node      `json:"node"`
+	Predicate Expr `json:"predicate"`
+	Left      Expr `json:"left"`
+	Right     Expr `json:"right"`
 }
+
+const CallExprNode = "call_expr"
 
 type CallExpr struct {
-	Node
-	Fn   Expr
-	Args []Expr
+	Node `json:"node"`
+	Fn   Expr   `json:"fn"`
+	Args []Expr `json:"args"`
 }
+
+const MemberExprNode = "member_expr"
 
 type MemberExpr struct {
-	Node
-	Left  Expr
-	Right *IdentExpr
+	Node  `json:"node"`
+	Left  Expr       `json:"left"`
+	Right *IdentExpr `json:"right"`
 }
+
+const IndexExprNode = "index_expr"
 
 type IndexExpr struct {
-	Node
-	Host  Expr
-	Index *NumberLitExpr
+	Node  `json:"node"`
+	Host  Expr           `json:"host"`
+	Index *NumberLitExpr `json:"index"`
 }
+
+const GroupExprNode = "group_expr"
 
 type GroupExpr struct {
-	Node
-	Expr Expr
+	Node `json:"node"`
+	Expr Expr `json:"expr"`
 }
+
+const IdentExprNode = "ident_expr"
 
 type IdentExpr struct {
-	Node
-	Value string
+	Node  `json:"node"`
+	Value string `json:"value"`
 }
+
+const StringLitExprNode = "string_literal_expr"
 
 type StringLitExpr struct {
-	Node
-	Value string
+	Node  `json:"node"`
+	Value string `json:"value"`
 }
+
+const TemplateLitExprNode = "template_literal_expr"
 
 type TemplateLitExpr struct {
-	Node
-	Value []Expr
+	Node  `json:"node"`
+	Value []Expr `json:"value"`
 }
+
+const NumberLitExprNode = "number_literal_expr"
 
 type NumberLitExpr struct {
-	Node
-	Value float64
+	Node  `json:"node"`
+	Value float64 `json:"value"`
 }
+
+const EmptyExprNode = "empty_expr"
 
 type EmptyExpr struct {
-	Node
+	Node `json:"node"`
 }
+
+const TypeMemberExprNode = "type_member_expr"
 
 type TypeMemberExpr struct {
-	Node
-	Left  *IdentExpr
-	Right *IdentExpr
+	Node  `json:"node"`
+	Left  *IdentExpr `json:"left"`
+	Right *IdentExpr `json:"right"`
 }
+
+const ListTypeExprNode = "list_type_expr"
 
 type ListTypeExpr struct {
-	Node
-	Type TypeExpr
+	Node `json:"node"`
+	Type TypeExpr `json:"type"`
 }
+
+const StructLitExprNode = "struct_literal_expr"
 
 type StructLitExpr struct {
-	Node
-	List []*TypePair
+	Node `json:"node"`
+	List []*TypePair `json:"list"`
 }
 
+const TypePairNode = "type_pair"
+
 type TypePair struct {
-	Node
-	Index int
-	Name  *IdentExpr
-	Type  TypeExpr
+	Node  `json:"node"`
+	Index int        `json:"index"`
+	Name  *IdentExpr `json:"name"`
+	Type  TypeExpr   `json:"type"`
 }
 
 func (e *BinaryExpr) exprNode()      {}

@@ -64,8 +64,8 @@ func (p *Parser) expect(kind ...token.Kind) token.Token {
 				switch p.current.Kind {
 				case token.DECLARE, token.IMPORT:
 					details = fmt.Sprintf("%s is a top level statement, try moving it up", p.current.Kind.String())
-					// case token.IDENT:
-					// 	details = "only section statements and fn definitions are valid here"
+				case token.IDENT:
+					details = "only section statements and fn definitions are valid here"
 				}
 			}
 
@@ -101,8 +101,6 @@ func (p *Parser) seq(open, close token.Kind) iter.Seq[int] {
 
 func (p *Parser) Parse() (*ast.File, error) {
 	p.ctx.Init()
-
-	start := p.current
 	p.skip()
 
 	fr := p.parseDeclStmt()
@@ -125,8 +123,15 @@ func (p *Parser) Parse() (*ast.File, error) {
 		return nil, errs.NewSyntaxError(p.errors, p.file)
 	}
 
+	var end token.Position
+	if len(stmts) > 0 {
+		end = stmts[len(stmts)-1].End()
+	} else {
+		end = fr.End()
+	}
+
 	return &ast.File{
-		Node:    ast.NewNode(start.Start, p.current.End),
+		Node:    ast.NewNode(ast.FileNode, fr.Start(), end),
 		Decl:    fr,
 		Imports: imports,
 		Stmts:   stmts,
@@ -149,7 +154,7 @@ func (p *Parser) parseStmt() ast.Stmt {
 	default:
 		p.expect()
 		return &ast.EmptyStmt{
-			Stmt: ast.NewStmtNode(p.current.Start, p.current.End),
+			Stmt: ast.NewStmtNode(ast.EmptyStmtNode, p.current.Start, p.current.End),
 		}
 	}
 }
@@ -160,15 +165,23 @@ func (p *Parser) parseDeclStmt() *ast.DeclStmt {
 	name := p.parseIdentExpr()
 	p.skip()
 
-	list := []*ast.IdentExpr{}
+	targets := []*ast.DeclTarget{}
 	for range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-		list = append(list, p.parseIdentExpr())
+		name := p.parseIdentExpr()
+		targets = append(targets, &ast.DeclTarget{
+			Node: name.Node,
+			Tag: &ast.StringLitExpr{
+				Node:  name.Node,
+				Value: name.Value,
+			},
+			Name: name,
+		})
 	}
 
 	return &ast.DeclStmt{
-		Stmt: ast.NewStmtNode(start.Start, p.current.End),
-		Name: name,
-		List: list,
+		Stmt:    ast.NewStmtNode(ast.DeclStmtNode, start.Start, p.current.End),
+		Name:    name,
+		Targets: targets,
 	}
 }
 
@@ -182,7 +195,7 @@ func (p *Parser) parseImportStmt() *ast.ImportStmt {
 		list = append(list, p.parseIdentExpr())
 
 		return &ast.ImportStmt{
-			Stmt: ast.NewStmtNode(start.Start, p.current.End),
+			Stmt: ast.NewStmtNode(ast.ImportStmtNode, start.Start, p.current.End),
 			List: list,
 		}
 	}
@@ -192,7 +205,7 @@ func (p *Parser) parseImportStmt() *ast.ImportStmt {
 	}
 
 	return &ast.ImportStmt{
-		Stmt: ast.NewStmtNode(start.Start, p.current.End),
+		Stmt: ast.NewStmtNode(ast.ImportStmtNode, start.Start, p.current.End),
 		List: list,
 	}
 }
@@ -205,7 +218,7 @@ func (p *Parser) parseTypeDefStmt() *ast.TypeDefStmt {
 	typ := p.parseTypeExpr()
 
 	return &ast.TypeDefStmt{
-		Stmt: ast.NewStmtNode(start.Start, typ.End()),
+		Stmt: ast.NewStmtNode(ast.TypeDefStmtNode, start.Start, typ.End()),
 		Name: name,
 		Type: typ,
 	}
@@ -225,7 +238,7 @@ func (p *Parser) parseFnDefStmt() *ast.FnDefStmt {
 	body := p.parseExpr()
 
 	return &ast.FnDefStmt{
-		Stmt:   ast.NewStmtNode(start.Start, body.End()),
+		Stmt:   ast.NewStmtNode(ast.FnDefStmtNode, start.Start, body.End()),
 		Params: params,
 		Name:   name,
 		Body:   body,
@@ -245,7 +258,7 @@ func (p *Parser) parseSectionStmt() *ast.SectionStmt {
 	}
 
 	return &ast.SectionStmt{
-		Stmt: ast.NewStmtNode(start.Start, p.current.End),
+		Stmt: ast.NewStmtNode(ast.SectionStmtNode, start.Start, p.current.End),
 		Name: name,
 		Body: list,
 	}
@@ -280,14 +293,14 @@ func (p *Parser) parseEntry() ast.Entry {
 	}
 	p.skip()
 
-	fields := []ast.Field{}
+	fields := []*ast.Field{}
 	for range p.seq(token.LEFT_CURLY_BRACE, token.RIGHT_CURLY_BRACE) {
 		fields = append(fields, p.parseField())
 	}
 
 	if isTemplate {
 		return &ast.TemplateEntry{
-			Node:        ast.NewNode(name.Start(), p.current.End),
+			Node:        ast.NewNode(ast.TemplateEntryNode, name.Start(), p.current.End),
 			Partitioned: isPartitioned,
 			Name:        name,
 			Fields:      fields,
@@ -296,28 +309,28 @@ func (p *Parser) parseEntry() ast.Entry {
 	}
 
 	return &ast.KeyEntry{
-		Node:   ast.NewNode(name.Start(), p.current.End),
+		Node:   ast.NewNode(ast.KeyEntryNode, name.Start(), p.current.End),
 		Name:   name,
 		Fields: fields,
 	}
 }
 
-func (p *Parser) parseField() ast.Field {
+func (p *Parser) parseField() *ast.Field {
 	tag := p.parseIdentExpr()
 	p.skip()
 
-	if p.current.Kind == token.STRING {
-		value := p.parseStringExpr()
-		return &ast.StringField{
-			Node:  ast.NewNode(tag.Start(), value.End()),
-			Tag:   tag,
-			Value: value,
-		}
+	var value ast.Expr
+	switch p.current.Kind {
+	case token.STRING:
+		value = p.parseStringExpr()
+	case token.TEMPLATE:
+		value = p.parseTemplateExpr()
+	default:
+		p.expect(token.STRING, token.TEMPLATE)
 	}
 
-	value := p.parseTemplateExpr()
-	return &ast.TemplateField{
-		Node:  ast.NewNode(tag.Start(), value.End()),
+	return &ast.Field{
+		Node:  ast.NewNode(ast.FieldNode, tag.Start(), value.End()),
 		Tag:   tag,
 		Value: value,
 	}
@@ -345,7 +358,7 @@ func (p *Parser) parseExpr() ast.Expr {
 	rhs := p.parseExpr()
 
 	return &ast.TernaryExpr{
-		Node:      ast.NewNode(binary.Start(), rhs.End()),
+		Node:      ast.NewNode(ast.TernaryExprNode, binary.Start(), rhs.End()),
 		Predicate: binary,
 		Left:      lhs,
 		Right:     rhs,
@@ -360,7 +373,7 @@ func (p *Parser) parseGroupExpr() ast.Expr {
 	end := p.expect(token.RIGHT_PARENS)
 
 	return &ast.GroupExpr{
-		Node: ast.NewNode(start.Start, end.End),
+		Node: ast.NewNode(ast.GroupExprNode, start.Start, end.End),
 		Expr: expr,
 	}
 }
@@ -392,7 +405,7 @@ func (p *Parser) parseBinaryExpr() ast.Expr {
 	rhs := p.parseBinaryExpr()
 
 	return &ast.BinaryExpr{
-		Node:     ast.NewNode(lhs.Start(), rhs.End()),
+		Node:     ast.NewNode(ast.BinaryExprNode, lhs.Start(), rhs.End()),
 		Operator: operator,
 		Left:     lhs,
 		Right:    rhs,
@@ -410,7 +423,7 @@ func (p *Parser) parseCallExpr() ast.Expr {
 		}
 
 		return &ast.CallExpr{
-			Node: ast.NewNode(member.Start(), p.current.End),
+			Node: ast.NewNode(ast.CallExprNode, member.Start(), p.current.End),
 			Fn:   member,
 			Args: args,
 		}
@@ -422,7 +435,7 @@ func (p *Parser) parseCallExpr() ast.Expr {
 		p.expect(token.RIGHT_SQUARE_BRACKET)
 
 		return &ast.IndexExpr{
-			Node:  ast.NewNode(member.Start(), p.current.End),
+			Node:  ast.NewNode(ast.IndexExprNode, member.Start(), p.current.End),
 			Host:  member,
 			Index: index,
 		}
@@ -435,7 +448,7 @@ func memberOf(l, r ast.Expr) *ast.MemberExpr {
 	switch r := r.(type) {
 	case *ast.IdentExpr:
 		return &ast.MemberExpr{
-			Node:  ast.NewNode(l.Start(), r.End()),
+			Node:  ast.NewNode(ast.MemberExprNode, l.Start(), r.End()),
 			Left:  l,
 			Right: r,
 		}
@@ -445,7 +458,7 @@ func memberOf(l, r ast.Expr) *ast.MemberExpr {
 			return nil
 		}
 		return &ast.MemberExpr{
-			Node:  ast.NewNode(l.Start(), r.End()),
+			Node:  ast.NewNode(ast.MemberExprNode, l.Start(), r.End()),
 			Left:  left,
 			Right: r.Right,
 		}
@@ -465,7 +478,7 @@ func (p *Parser) parseMemberExpr() ast.Expr {
 	default:
 		p.expect(token.IDENT, token.LEFT_CURLY_BRACE)
 		return &ast.EmptyExpr{
-			Node: ast.NewNode(p.current.Start, p.current.End),
+			Node: ast.NewNode(ast.EmptyExprNode, p.current.Start, p.current.End),
 		}
 	}
 
@@ -496,7 +509,7 @@ func (p *Parser) parseBasicExpr() ast.Expr {
 	default:
 		p.expect(token.STRING, token.TEMPLATE, token.NUMBER, token.DOT)
 		return &ast.EmptyExpr{
-			Node: ast.NewNode(p.current.Start, p.current.End),
+			Node: ast.NewNode(ast.EmptyExprNode, p.current.Start, p.current.End),
 		}
 	}
 }
@@ -504,7 +517,7 @@ func (p *Parser) parseBasicExpr() ast.Expr {
 func (p *Parser) parseIdentExpr() *ast.IdentExpr {
 	expr := p.expect(token.IDENT)
 	return &ast.IdentExpr{
-		Node:  ast.NewNode(expr.Start, expr.End),
+		Node:  ast.NewNode(ast.IdentExprNode, expr.Start, expr.End),
 		Value: expr.Literal,
 	}
 }
@@ -512,7 +525,7 @@ func (p *Parser) parseIdentExpr() *ast.IdentExpr {
 func (p *Parser) parseStringExpr() *ast.StringLitExpr {
 	expr := p.expect(token.STRING)
 	return &ast.StringLitExpr{
-		Node:  ast.NewNode(expr.Start, expr.End),
+		Node:  ast.NewNode(ast.StringLitExprNode, expr.Start, expr.End),
 		Value: expr.Literal,
 	}
 }
@@ -542,7 +555,7 @@ func (p *Parser) parseTemplateExpr() *ast.TemplateLitExpr {
 			}
 
 			exprs = append(exprs, &ast.StringLitExpr{
-				Node:  ast.NewNode(start.Start, start.End),
+				Node:  ast.NewNode(ast.StringLitExprNode, start.Start, start.End),
 				Value: literal,
 			})
 		case int:
@@ -562,7 +575,7 @@ func (p *Parser) parseTemplateExpr() *ast.TemplateLitExpr {
 	p.advance()
 
 	return &ast.TemplateLitExpr{
-		Node:  ast.NewNode(start.Start, start.End),
+		Node:  ast.NewNode(ast.TemplateLitExprNode, start.Start, start.End),
 		Value: exprs,
 	}
 }
@@ -578,7 +591,7 @@ func (p *Parser) parseNumberExpr() *ast.NumberLitExpr {
 	}
 
 	return &ast.NumberLitExpr{
-		Node:  ast.NewNode(expr.Start, expr.End),
+		Node:  ast.NewNode(ast.NumberLitExprNode, expr.Start, expr.End),
 		Value: value,
 	}
 }
@@ -596,7 +609,7 @@ func (p *Parser) parseTypeExpr() ast.TypeExpr {
 	default:
 		p.expect()
 		return &ast.EmptyExpr{
-			Node: ast.NewNode(p.current.Start, p.current.End),
+			Node: ast.NewNode(ast.EmptyExprNode, p.current.Start, p.current.End),
 		}
 	}
 
@@ -607,7 +620,7 @@ func (p *Parser) parseTypeExpr() ast.TypeExpr {
 	end := p.expect(token.RIGHT_SQUARE_BRACKET)
 
 	return &ast.ListTypeExpr{
-		Node: ast.NewNode(lhs.Start(), end.End),
+		Node: ast.NewNode(ast.ListTypeExprNode, lhs.Start(), end.End),
 		Type: lhs,
 	}
 }
@@ -623,7 +636,7 @@ func (p *Parser) parseTypeMemberExpr() ast.TypeExpr {
 	rhs := p.parseIdentExpr()
 
 	return &ast.TypeMemberExpr{
-		Node:  ast.NewNode(ident.Start(), rhs.End()),
+		Node:  ast.NewNode(ast.TypeMemberExprNode, ident.Start(), rhs.End()),
 		Left:  ident,
 		Right: rhs,
 	}
@@ -638,7 +651,7 @@ func (p *Parser) parseStructExpr() *ast.StructLitExpr {
 	}
 
 	return &ast.StructLitExpr{
-		Node: ast.NewNode(start.Start, p.current.End),
+		Node: ast.NewNode(ast.StructLitExprNode, start.Start, p.current.End),
 		List: list,
 	}
 }
@@ -661,7 +674,7 @@ func (p *Parser) parseParameter(i int) *ast.Parameter {
 	typ := p.parseTypeExpr()
 
 	return &ast.Parameter{
-		Node:  ast.NewNode(name.Start(), typ.End()),
+		Node:  ast.NewNode(ast.ParameterNode, name.Start(), typ.End()),
 		Index: i,
 		Name:  name,
 		Type:  typ,

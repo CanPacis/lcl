@@ -49,7 +49,7 @@ type Checker struct {
 
 	types   map[string]*ast.TypeDefStmt
 	fns     map[string]*ast.FnDefStmt
-	targets map[string]*ast.IdentExpr
+	targets map[string]*ast.DeclTarget
 
 	frame []ResolveContext
 	init  bool
@@ -311,25 +311,25 @@ func (c *Checker) RegisterFn(node *ast.FnDefStmt) error {
 	return nil
 }
 
-func (c *Checker) RegisterTarget(node *ast.IdentExpr) (language.Tag, error) {
-	if original, exists := c.fns[node.Value]; exists {
+func (c *Checker) RegisterTarget(node *ast.DeclTarget) (language.Tag, error) {
+	if original, exists := c.fns[node.Name.Value]; exists {
 		return language.Tag{}, &errs.DuplicateDefError{
-			Name:     node.Value,
+			Name:     node.Name.Value,
 			Original: original,
 			Node:     node,
 		}
 	}
 
-	c.targets[node.Value] = node
-	tag, err := language.Parse(node.Value)
+	c.targets[node.Name.Value] = node
+	tag, err := language.Parse(node.Tag.Value)
 	if err != nil {
 		return language.Tag{}, &errs.ResolveError{
-			Value: node.Value,
+			Value: node.Tag.Value,
 			Kind:  errs.TARGET,
 			Node:  node,
 		}
 	}
-	c.tags[node.Value] = tag
+	c.tags[node.Name.Value] = tag
 	return tag, nil
 }
 
@@ -355,7 +355,7 @@ func NewChecker(scope *pkg.Scope, env *types.Environment) *Checker {
 
 		types:   make(map[string]*ast.TypeDefStmt),
 		fns:     make(map[string]*ast.FnDefStmt),
-		targets: make(map[string]*ast.IdentExpr),
+		targets: make(map[string]*ast.DeclTarget),
 	}
 	c.Init()
 	return c
