@@ -134,12 +134,12 @@ func MustParseTypeExpr(options ...func(*ParserOptions)) ast.TypeExpr {
 }
 
 func FormatError(err error) string {
-	tle, ok := err.(errs.TopLevelError)
+	es, ok := err.(*errs.ErrorSet)
 	if !ok {
 		return err.Error()
 	}
 
-	start, end := tle.Position()
+	start, end := es.Position()
 	pos := start.String() + " - " + end.String()
-	return tle.Error() + " at " + pos + " in " + tle.File()
+	return es.Error() + " at " + pos + " in " + es.File()
 }

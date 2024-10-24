@@ -1,137 +1,65 @@
 package errs
 
 import (
-	"strings"
+	"errors"
+	"fmt"
 
 	"github.com/CanPacis/go-i18n/parser/token"
 )
 
-type SyntaxError struct {
-	Reasons []error
-	file    string
+var (
+	ErrUnexpectedToken       = errors.New("unexpected token")
+	ErrUnterminatedConstruct = errors.New("unterminated")
+	ErrMalformedNumber       = errors.New("malformed number")
+)
+
+func unexpectedToken(t token.Token, e []token.Kind, d string) string {
+	if len(d) > 0 {
+		d = ", " + d
+	}
+	base := fmt.Sprintf("%s '%s'", ErrUnexpectedToken.Error(), t.Kind.String())
+
+	if len(e) == 0 {
+		return base
+	}
+	switch len(e) {
+	case 0:
+		return base
+	case 1:
+		return fmt.Sprintf("%s, was expecting a %s%s", base, e[0].String(), d)
+	default:
+		return fmt.Sprintf("%s, was expecting any of %s%s", base, join(e, ", "), d)
+	}
 }
 
-func (e *SyntaxError) Position() (start token.Position, end token.Position) {
-	if len(e.Reasons) == 0 {
-		return
-	}
-
-	reason := e.Reasons[0]
-	p, ok := reason.(Positioner)
-	if !ok {
-		return
-	}
-
-	return p.Position()
+type SyntaxError struct {
+	Err      error
+	Token    token.Token
+	Expected []token.Kind
+	Details  string
 }
 
 func (e *SyntaxError) Error() string {
-	if len(e.Reasons) == 0 {
-		return ""
-	}
-	reason := e.Reasons[0]
-
-	return "syntax error: " + reason.Error()
-}
-
-func (e *SyntaxError) Unwrap() []error {
-	return e.Reasons
-}
-
-func (e *SyntaxError) File() string {
-	return e.file
-}
-
-func NewSyntaxError(reasons []error, file string) *SyntaxError {
-	return &SyntaxError{
-		Reasons: reasons,
-		file:    file,
+	switch {
+	case errors.Is(e.Err, ErrUnexpectedToken):
+		return fmt.Sprintf("%s: %s", e.Name(), unexpectedToken(e.Token, e.Expected, e.Details))
+	case errors.Is(e.Err, ErrUnterminatedConstruct):
+		return fmt.Sprintf("%s: %s %s, token does not have an ending", e.Name(), e.Err.Error(), e.Token.Kind.String())
+	case errors.Is(e.Err, ErrMalformedNumber):
+		return fmt.Sprintf("%s: %s", e.Name(), e.Err.Error())
+	default:
+		return fmt.Sprintf("%s: %s", e.Name(), e.Err.Error())
 	}
 }
 
-const (
-	Unexpected      = "unexpected token"
-	UntermConstruct = "unterminated"
-	Number          = "number error"
-)
-
-type UnexpectedTokenError struct {
-	Details  string
-	Found    token.Token
-	Expected []token.Kind
+func (e *SyntaxError) Unwrap() error {
+	return e.Err
 }
 
-func (e *UnexpectedTokenError) Position() (start token.Position, end token.Position) {
-	return e.Found.Start, e.Found.End
+func (e *SyntaxError) Name() string {
+	return "syntax error"
 }
 
-func (e *UnexpectedTokenError) Error() string {
-	details := ""
-
-	if len(e.Details) > 0 {
-		details = ", " + e.Details
-	}
-
-	expected := []string{}
-	for _, e := range e.Expected {
-		expected = append(expected, "'"+e.String()+"'")
-	}
-
-	if len(expected) > 0 {
-		if len(expected) == 1 {
-			return Unexpected + ": '" + e.Found.Kind.String() + "', was expecting a " + expected[0] + details
-		}
-
-		return Unexpected + " '" + e.Found.Kind.String() + "', was expecting any of " + strings.Join(expected, ", ") + details
-	}
-
-	return Unexpected + ": '" + e.Found.Kind.String() + "'" + details
-}
-
-func (e *UnexpectedTokenError) Is(err error) bool {
-	_, ok := err.(*UnexpectedTokenError)
-	return ok
-}
-
-type UntermConstructError struct {
-	Token token.Token
-}
-
-func (e *UntermConstructError) Error() string {
-	return UntermConstruct + " " + e.Token.Kind.String() + ": token does not have an ending"
-}
-
-func (e *UntermConstructError) Position() (start token.Position, end token.Position) {
-	return e.Token.Start, e.Token.End
-}
-
-func (e *UntermConstructError) Is(err error) bool {
-	_, ok := err.(*UntermConstructError)
-	return ok
-}
-
-type NumberError struct {
-	Reason error
-	Token  token.Token
-}
-
-func (e *NumberError) Position() (start token.Position, end token.Position) {
-	return e.Token.Start, e.Token.End
-}
-
-func (e *NumberError) Error() string {
-	if e.Reason == nil {
-		return ""
-	}
-
-	return Number + ": " + e.Reason.Error()
-}
-
-func (e *NumberError) Unwrap() error {
-	return e.Reason
-}
-
-func (e *NumberError) Is(err error) bool {
-	_, ok := err.(*NumberError)
-	return ok
+func (e *SyntaxError) Position() (token.Position, token.Position) {
+	return e.Token.Position()
 }
