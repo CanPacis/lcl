@@ -81,7 +81,7 @@ func (e *Environment) RegisterType(def *ast.TypeDefStmt) error {
 	return nil
 }
 
-func (e *Environment) DefineType(name string, typ Type) {
+func (e *Environment) Define(name string, typ Type) {
 	e.types[name] = typ
 }
 

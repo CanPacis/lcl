@@ -71,7 +71,7 @@ func (c *ResolveCase) Run(assert *assert.Assertions) {
 func TestEnvironment(t *testing.T) {
 	env := types.NewEnvironment()
 	time := types.New("Time", types.I64)
-	env.DefineType("Time", time)
+	env.Define("Time", time)
 
 	data := types.New("Data", types.NewStruct(
 		types.NewPair(0, "name", types.String),
@@ -79,7 +79,7 @@ func TestEnvironment(t *testing.T) {
 	))
 
 	user := types.NewEnvironment()
-	user.DefineType("Data", data)
+	user.Define("Data", data)
 	env.Import("User", user)
 
 	tests := []test.Injector[*types.Environment]{
