@@ -24,12 +24,10 @@ func (c *ExprCase) Run(assert *assert.Assertions) {
 	if c.Out != nil {
 		CompareExpr(A{assert}, c.Out, expr)
 	} else {
-		if len(c.Contains) > 0 {
-			assert.ErrorContains(err, c.Contains)
+		if c.Err != nil {
+			assert.ErrorIs(err, c.Err)
 		} else {
-			if err != nil {
-				assert.Fail(test.FormatError(err))
-			}
+			assert.NoError(err)
 		}
 	}
 }
@@ -61,8 +59,8 @@ func TestExpr(t *testing.T) {
 			Out: &ast.StringLitExpr{Value: "literal"},
 		},
 		&ExprCase{
-			In:       `"literal`,
-			Contains: errs.UntermConstruct,
+			In:  `"literal`,
+			Err: errs.ErrUnterminatedConstruct,
 		},
 		&ExprCase{
 			In: "``",
@@ -96,12 +94,12 @@ func TestExpr(t *testing.T) {
 			},
 		},
 		&ExprCase{
-			In:       "`unterminated template ",
-			Contains: errs.UntermConstruct,
+			In:  "`unterminated template ",
+			Err: errs.ErrUnterminatedConstruct,
 		},
 		&ExprCase{
-			In:       "`unterminated { expression `",
-			Contains: errs.UntermConstruct,
+			In:  "`unterminated { expression `",
+			Err: errs.ErrUnterminatedConstruct,
 		},
 		&ExprCase{In: "`{}{\n}\n{}`"},
 		&ExprCase{
@@ -132,13 +130,94 @@ func TestExpr(t *testing.T) {
 				Right:    &ast.IdentExpr{Value: "ident"},
 			},
 		},
-		&ExprCase{In: `""()`, Contains: errs.Unexpected},
+		&ExprCase{
+			In: "3 + 7",
+			Out: &ast.ArithmeticExpr{
+				Operator: token.Token{Kind: token.PLUS},
+				Left:     &ast.NumberLitExpr{Value: 3},
+				Right:    &ast.NumberLitExpr{Value: 7},
+			},
+		},
+		&ExprCase{
+			In: "3 + 7 * 5",
+			Out: &ast.ArithmeticExpr{
+				Operator: token.Token{Kind: token.PLUS},
+				Left:     &ast.NumberLitExpr{Value: 3},
+				Right: &ast.ArithmeticExpr{
+					Operator: token.Token{Kind: token.STAR},
+					Left:     &ast.NumberLitExpr{Value: 7},
+					Right:    &ast.NumberLitExpr{Value: 5},
+				},
+			},
+		},
+		&ExprCase{
+			In: "3 + 7 * 5 ^ 2",
+			Out: &ast.ArithmeticExpr{
+				Operator: token.Token{Kind: token.PLUS},
+				Left:     &ast.NumberLitExpr{Value: 3},
+				Right: &ast.ArithmeticExpr{
+					Operator: token.Token{Kind: token.STAR},
+					Left:     &ast.NumberLitExpr{Value: 7},
+					Right: &ast.ArithmeticExpr{
+						Operator: token.Token{Kind: token.CARET},
+						Left:     &ast.NumberLitExpr{Value: 5},
+						Right:    &ast.NumberLitExpr{Value: 2},
+					},
+				},
+			},
+		},
+		&ExprCase{In: `""()`, Err: errs.ErrUnexpectedToken},
 		&ExprCase{In: `member.of`},
 		&ExprCase{In: `member.of.long`},
 		&ExprCase{In: `member.of.long()`},
+		&ExprCase{
+			In: `imports::package`,
+			Out: &ast.ImportExpr{
+				Left:  &ast.IdentExpr{Value: "imports"},
+				Right: &ast.IdentExpr{Value: "package"},
+			},
+		},
+		&ExprCase{
+			In: `imports::func()`,
+			Out: &ast.CallExpr{
+				Fn: &ast.ImportExpr{
+					Left:  &ast.IdentExpr{Value: "imports"},
+					Right: &ast.IdentExpr{Value: "func"},
+				},
+			},
+		},
+		&ExprCase{
+			In: `imports::member.of`,
+			Out: &ast.MemberExpr{
+				Left: &ast.ImportExpr{
+					Left:  &ast.IdentExpr{Value: "imports"},
+					Right: &ast.IdentExpr{Value: "member"},
+				},
+				Right: &ast.IdentExpr{Value: "of"},
+			},
+		},
+		&ExprCase{
+			In: `imports::member.of.complex`,
+			Out: &ast.MemberExpr{
+				Left: &ast.MemberExpr{
+					Left: &ast.ImportExpr{
+						Left:  &ast.IdentExpr{Value: "imports"},
+						Right: &ast.IdentExpr{Value: "member"},
+					},
+					Right: &ast.IdentExpr{Value: "of"},
+				},
+				Right: &ast.IdentExpr{Value: "complex"},
+			},
+		},
+		&ExprCase{In: `imports::member.of.complex + -32`},
+		&ExprCase{In: `imports::member.of.complex + -32 == 0`},
+		&ExprCase{In: `(imports::member.of.complex + -32 == 0) || false`},
 		&ExprCase{In: `index[0]`},
 		&ExprCase{In: `index.of[0]`},
-		&ExprCase{In: `index.of[invalid]`, Contains: errs.Unexpected},
+		&ExprCase{In: `index.of[identifier]`},
+		&ExprCase{In: `index.of[call()]`},
+		&ExprCase{In: `index.of[call(imports::member.of.complex + -32 == 0)]`},
+		&ExprCase{In: `index.of[call(imports::member.of.complex + -32 == 0) extra]`, Err: errs.ErrUnexpectedToken},
 		&ExprCase{In: `call(param)`},
 		&ExprCase{
 			In: `call(param1 param2)`,
@@ -153,7 +232,7 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `call(param.of index[0])`},
 		&ExprCase{In: `call(param.of (a || b) 6)`},
 		&ExprCase{In: `call()()`},
-		&ExprCase{In: `call(param.of a || (b 6))`, Contains: errs.Unexpected},
+		&ExprCase{In: `call(param.of a || (b 6))`, Err: errs.ErrUnexpectedToken},
 		&ExprCase{
 			In: `call(param.of a || b 6)`,
 			Out: &ast.CallExpr{
@@ -175,7 +254,47 @@ func TestExpr(t *testing.T) {
 		&ExprCase{In: `pred ? if : else`},
 		&ExprCase{In: `pred ? a == b : a || c`},
 		&ExprCase{In: `call() ? a == b : a || c`},
-		&ExprCase{In: `call(true ? a == b : a || c)`},
+		&ExprCase{
+			In: `call(true ? a == b : -30.1 || m.of it::continues)`,
+			Out: &ast.CallExpr{
+				Fn: &ast.IdentExpr{Value: "call"},
+				Args: []ast.Expr{
+					&ast.TernaryExpr{
+						Predicate: &ast.IdentExpr{Value: "true"},
+						Left: &ast.BinaryExpr{
+							Operator: token.Token{Kind: token.EQUALS},
+							Left:     &ast.IdentExpr{Value: "a"},
+							Right:    &ast.IdentExpr{Value: "b"},
+						},
+						Right: &ast.BinaryExpr{
+							Operator: token.Token{Kind: token.OR},
+							Left:     &ast.NumberLitExpr{Value: -30.1},
+							Right: &ast.MemberExpr{
+								Left:  &ast.IdentExpr{Value: "m"},
+								Right: &ast.IdentExpr{Value: "of"},
+							},
+						},
+					},
+					&ast.ImportExpr{
+						Left:  &ast.IdentExpr{Value: "it"},
+						Right: &ast.IdentExpr{Value: "continues"},
+					},
+				},
+			},
+		},
+		&ExprCase{
+			In: `3 + 5 == true`,
+			Out: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.EQUALS},
+				Left: &ast.ArithmeticExpr{
+					Operator: token.Token{Kind: token.PLUS},
+					Left:     &ast.NumberLitExpr{Value: 3},
+					Right:    &ast.NumberLitExpr{Value: 5},
+				},
+				Right: &ast.IdentExpr{Value: "true"},
+			},
+		},
+		&ExprCase{In: "`template { call(true ? a == b : -30.1 || m.of it::continues) } with { complex.expressions[0] }`"},
 	}
 
 	test.Run(t, tests)
@@ -217,8 +336,8 @@ func TestTypeExpr(t *testing.T) {
 			},
 		},
 		&TypeExprCase{
-			In: "time.Time",
-			Out: &ast.MemberExpr{
+			In: "time::Time",
+			Out: &ast.ImportExpr{
 				Left:  &ast.IdentExpr{Value: "time"},
 				Right: &ast.IdentExpr{Value: "Time"},
 			},
@@ -228,19 +347,19 @@ func TestTypeExpr(t *testing.T) {
 			Out: &ast.StructLitExpr{Fields: []*ast.TypePair{}},
 		},
 		&TypeExprCase{
-			In: "time.Time[]",
+			In: "time::Time[]",
 			Out: &ast.ListTypeExpr{
-				Type: &ast.MemberExpr{
+				Type: &ast.ImportExpr{
 					Left:  &ast.IdentExpr{Value: "time"},
 					Right: &ast.IdentExpr{Value: "Time"},
 				},
 			},
 		},
 		&TypeExprCase{
-			In: "time.Time[][]",
+			In: "time::Time[][]",
 			Out: &ast.ListTypeExpr{
 				Type: &ast.ListTypeExpr{
-					Type: &ast.MemberExpr{
+					Type: &ast.ImportExpr{
 						Left:  &ast.IdentExpr{Value: "time"},
 						Right: &ast.IdentExpr{Value: "Time"},
 					},

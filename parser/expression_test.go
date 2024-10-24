@@ -47,12 +47,18 @@ func CompareExpr(assert A, left, right ast.Expr) {
 
 		CompareExpr(assert, left.Left, r.Left)
 		CompareIdent(assert, left.Right, r.Right)
+	case *ast.ImportExpr:
+		assert.IsType(left, right)
+		r := right.(*ast.ImportExpr)
+
+		CompareIdent(assert, left.Left, r.Left)
+		CompareIdent(assert, left.Right, r.Right)
 	case *ast.IndexExpr:
 		assert.IsType(left, right)
 		r := right.(*ast.IndexExpr)
 
 		CompareExpr(assert, left.Host, r.Host)
-		CompareNumber(assert, left.Index, r.Host)
+		CompareExpr(assert, left.Index, r.Host)
 	case *ast.GroupExpr:
 		assert.IsType(left, right)
 		r := right.(*ast.GroupExpr)
@@ -105,11 +111,11 @@ func CompareTypeExpr(assert A, left ast.TypeExpr, right ast.TypeExpr) {
 		assert.IsType(left, right)
 		r := right.(*ast.IdentExpr)
 		assert.Equal(left.Value, r.Value)
-	case *ast.MemberExpr:
+	case *ast.ImportExpr:
 		assert.IsType(left, right)
-		r := right.(*ast.MemberExpr)
+		r := right.(*ast.ImportExpr)
 
-		CompareExpr(assert, left.Left, r.Left)
+		CompareIdent(assert, left.Left, r.Left)
 		CompareIdent(assert, left.Right, r.Right)
 	case *ast.ListTypeExpr:
 		assert.IsType(left, right)

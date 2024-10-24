@@ -54,7 +54,8 @@ func (p *Parser) expect(kind ...token.Kind) token.Token {
 	if !slices.Contains(kind, p.current.Kind) {
 		switch p.current.Kind {
 		case token.UNTERM_STR, token.UNTERM_TEMP, token.UNTERM_TEMP_EXPR:
-			p.error(&errs.UntermConstructError{
+			p.error(&errs.SyntaxError{
+				Err:   errs.ErrUnterminatedConstruct,
 				Token: p.current,
 			})
 		default:
@@ -72,10 +73,11 @@ func (p *Parser) expect(kind ...token.Kind) token.Token {
 				}
 			}
 
-			p.error(&errs.UnexpectedTokenError{
-				Details:  details,
-				Found:    p.current,
+			p.error(&errs.SyntaxError{
+				Err:      errs.ErrUnexpectedToken,
+				Token:    p.current,
 				Expected: kind,
+				Details:  details,
 			})
 		}
 	}
@@ -123,7 +125,7 @@ func (p *Parser) Parse() (*ast.File, error) {
 	}
 
 	if len(p.errors) != 0 {
-		return nil, errs.NewSyntaxError(p.errors, p.file)
+		return nil, errs.NewErrorSet(p.file, p.errors)
 	}
 
 	var end token.Position
@@ -358,7 +360,7 @@ func (p *Parser) parseExpr() ast.Expr {
 	p.ctx.Push(EXPRESSION)
 	defer p.ctx.Pop()
 
-	var expr ast.Expr = p.parseArithmeticExpr()
+	var expr ast.Expr = p.parseBinaryExpr()
 	p.skip()
 
 	for p.current.Kind == token.QUESTION_MARK {
@@ -375,6 +377,32 @@ func (p *Parser) parseExpr() ast.Expr {
 			Predicate: expr,
 			Left:      lhs,
 			Right:     rhs,
+		}
+	}
+
+	return expr
+}
+
+var operators = []token.Kind{
+	token.AND, token.OR,
+	token.EQUALS, token.NOT_EQUALS,
+	token.GT, token.GTE,
+	token.LT, token.LTE,
+}
+
+func (p *Parser) parseBinaryExpr() ast.Expr {
+	var expr ast.Expr = p.parseArithmeticExpr()
+	p.skip()
+
+	for slices.Contains(operators, p.current.Kind) {
+		operator := p.advance()
+		p.skip()
+		rhs := p.parseArithmeticExpr()
+		expr = &ast.BinaryExpr{
+			Node:     ast.NewNode(ast.BinaryExprNode, expr.Start(), rhs.End()),
+			Operator: operator,
+			Left:     expr,
+			Right:    rhs,
 		}
 	}
 
@@ -420,15 +448,15 @@ func (p *Parser) parseArithmeticExpr2() ast.Expr {
 }
 
 func (p *Parser) parseExponentExpr() ast.Expr {
-	var expr ast.Expr = p.parseComplexExpr()
+	var expr ast.Expr = p.parseIndexExpr()
 	p.skip()
 
 	for p.current.Kind == token.CARET {
 		operator := p.advance()
 		p.skip()
 		rhs := p.parseExponentExpr()
-		expr = &ast.BinaryExpr{
-			Node:     ast.NewNode(ast.BinaryExprNode, expr.Start(), rhs.End()),
+		expr = &ast.ArithmeticExpr{
+			Node:     ast.NewNode(ast.ArithmeticExprNode, expr.Start(), rhs.End()),
 			Operator: operator,
 			Left:     expr,
 			Right:    rhs,
@@ -438,14 +466,7 @@ func (p *Parser) parseExponentExpr() ast.Expr {
 	return expr
 }
 
-var operators = []token.Kind{
-	token.AND, token.OR,
-	token.EQUALS, token.NOT_EQUALS,
-	token.GT, token.GTE,
-	token.LT, token.LTE,
-}
-
-func (p *Parser) parseComplexExpr() ast.Expr {
+func (p *Parser) parseIndexExpr() ast.Expr {
 	var expr ast.Expr
 
 	switch p.current.Kind {
@@ -458,30 +479,17 @@ func (p *Parser) parseComplexExpr() ast.Expr {
 	}
 
 	p.skip()
-	for slices.Contains(operators, p.current.Kind) || p.current.Kind == token.LEFT_SQUARE_BRACKET {
-		switch p.current.Kind {
-		case token.LEFT_SQUARE_BRACKET:
-			p.advance()
-			p.skip()
-			index := p.parseNumberExpr()
-			p.skip()
-			end := p.expect(token.RIGHT_SQUARE_BRACKET)
+	for p.current.Kind == token.LEFT_SQUARE_BRACKET {
+		p.advance()
+		p.skip()
+		index := p.parseExpr()
+		p.skip()
+		end := p.expect(token.RIGHT_SQUARE_BRACKET)
 
-			expr = &ast.IndexExpr{
-				Node:  ast.NewNode(ast.IndexExprNode, expr.Start(), end.End),
-				Host:  expr,
-				Index: index,
-			}
-		default:
-			operator := p.advance()
-			p.skip()
-			rhs := p.parseComplexExpr()
-			expr = &ast.BinaryExpr{
-				Node:     ast.NewNode(ast.BinaryExprNode, expr.Start(), rhs.End()),
-				Operator: operator,
-				Left:     expr,
-				Right:    rhs,
-			}
+		expr = &ast.IndexExpr{
+			Node:  ast.NewNode(ast.IndexExprNode, expr.Start(), end.End),
+			Host:  expr,
+			Index: index,
 		}
 	}
 
@@ -509,7 +517,7 @@ func (p *Parser) parseCallExpr() ast.Expr {
 }
 
 func (p *Parser) parseMemberExpr() ast.Expr {
-	var expr ast.Expr = p.parseIdentExpr()
+	var expr ast.Expr = p.parseImportExpr()
 
 	for p.current.Kind == token.DOT {
 		p.advance()
@@ -522,6 +530,23 @@ func (p *Parser) parseMemberExpr() ast.Expr {
 	}
 
 	return expr
+}
+
+func (p *Parser) parseImportExpr() ast.Expr {
+	expr := p.parseIdentExpr()
+
+	if p.current.Kind != token.DOUBLE_COLON {
+		return expr
+	}
+
+	p.advance()
+	rhs := p.parseIdentExpr()
+
+	return &ast.ImportExpr{
+		Node:  ast.NewNode(ast.ImportExprNode, expr.Start(), rhs.End()),
+		Left:  expr,
+		Right: rhs,
+	}
 }
 
 func (p *Parser) parseBasicExpr() ast.Expr {
@@ -615,9 +640,9 @@ func (p *Parser) parseNumberExpr() *ast.NumberLitExpr {
 	expr := p.expect(token.NUMBER)
 	value, err := strconv.ParseFloat(expr.Literal, 64)
 	if err != nil {
-		p.error(&errs.NumberError{
-			Reason: err.(*strconv.NumError).Unwrap(),
-			Token:  expr,
+		p.error(&errs.SyntaxError{
+			Err:   errs.ErrMalformedNumber,
+			Token: expr,
 		})
 	}
 
@@ -658,12 +683,12 @@ func (p *Parser) parseTypeExpr() ast.TypeExpr {
 
 func (p *Parser) parseStructExpr() ast.TypeExpr {
 	if p.current.Kind == token.IDENT {
-		member := p.parseMemberExpr()
+		member := p.parseImportExpr()
 
 		switch member := member.(type) {
 		case *ast.IdentExpr:
 			return member
-		case *ast.MemberExpr:
+		case *ast.ImportExpr:
 			return member
 		default:
 			return &ast.EmptyExpr{}
@@ -697,7 +722,8 @@ func (p *Parser) parseTypePair(i int) *ast.TypePair {
 
 func (p *Parser) parseParameter(i int) *ast.Parameter {
 	name := p.parseIdentExpr()
-	p.expect(token.DOUBLE_COLON)
+	p.expect(token.COLON)
+	p.skip()
 	typ := p.parseTypeExpr()
 
 	return &ast.Parameter{
@@ -728,7 +754,7 @@ func ParseStmt(file *File) (ast.Stmt, error) {
 	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
-		return nil, errs.NewSyntaxError(p.errors, p.file)
+		return nil, errs.NewErrorSet(p.file, p.errors)
 	}
 
 	return node, nil
@@ -740,7 +766,7 @@ func ParseExpr(file *File) (ast.Expr, error) {
 	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
-		return nil, errs.NewSyntaxError(p.errors, p.file)
+		return nil, errs.NewErrorSet(p.file, p.errors)
 	}
 
 	return node, nil
@@ -752,7 +778,7 @@ func ParseTypeExpr(file *File) (ast.TypeExpr, error) {
 	p.expect(token.EOF)
 
 	if len(p.errors) != 0 {
-		return nil, errs.NewSyntaxError(p.errors, p.file)
+		return nil, errs.NewErrorSet(p.file, p.errors)
 	}
 
 	return node, nil

@@ -192,12 +192,20 @@ type MemberExpr struct {
 	Right *IdentExpr `json:"right"`
 }
 
+const ImportExprNode = "import_expr"
+
+type ImportExpr struct {
+	Node  `json:"node"`
+	Left  *IdentExpr `json:"left"`
+	Right *IdentExpr `json:"right"`
+}
+
 const IndexExprNode = "index_expr"
 
 type IndexExpr struct {
 	Node  `json:"node"`
-	Host  Expr           `json:"host"`
-	Index *NumberLitExpr `json:"index"`
+	Host  Expr `json:"host"`
+	Index Expr `json:"index"`
 }
 
 const GroupExprNode = "group_expr"
@@ -241,14 +249,6 @@ type EmptyExpr struct {
 	Node `json:"node"`
 }
 
-// const TypeMemberExprNode = "type_member_expr"
-
-// type TypeMemberExpr struct {
-// 	Node  `json:"node"`
-// 	Left  *IdentExpr `json:"left"`
-// 	Right *IdentExpr `json:"right"`
-// }
-
 const ListTypeExprNode = "list_type_expr"
 
 type ListTypeExpr struct {
@@ -277,6 +277,7 @@ func (e *ArithmeticExpr) exprNode()  {}
 func (e *TernaryExpr) exprNode()     {}
 func (e *CallExpr) exprNode()        {}
 func (e *MemberExpr) exprNode()      {}
+func (e *ImportExpr) exprNode()      {}
 func (e *IndexExpr) exprNode()       {}
 func (e *GroupExpr) exprNode()       {}
 func (e *IdentExpr) exprNode()       {}
@@ -286,7 +287,7 @@ func (e *NumberLitExpr) exprNode()   {}
 func (e *EmptyExpr) exprNode()       {}
 
 func (e *IdentExpr) tExprNode()     {}
-func (e *MemberExpr) tExprNode()    {}
+func (e *ImportExpr) tExprNode()    {}
 func (e *ListTypeExpr) tExprNode()  {}
 func (e *StructLitExpr) tExprNode() {}
 func (e *EmptyExpr) tExprNode()     {}
