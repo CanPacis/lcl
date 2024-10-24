@@ -185,3 +185,7 @@ func (t Token) String() string {
 		return fmt.Sprintf("%s (%s)", t.Kind.String(), t.Literal)
 	}
 }
+
+func (t Token) Position() (Position, Position) {
+	return t.Start, t.End
+}
