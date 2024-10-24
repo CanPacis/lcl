@@ -18,11 +18,13 @@ var (
 	ErrInvalidType      = errors.New("invalid type")
 	ErrCannotUseType    = errors.New("cannot use type")
 	ErrNotComparable    = errors.New("expressions are not comparable")
+	ErrNotOperable      = errors.New("expressions are not operable")
 	ErrNotCallable      = errors.New("expression is not callable")
 	ErrNotIndexable     = errors.New("expression is not indexable")
 	ErrTooManyArguments = errors.New("too many arguments in call")
 	ErrTooFewArguments  = errors.New("too few arguments in call")
 	ErrNonBoolPredicate = errors.New("non bool predicate")
+	ErrNonIntIndex      = errors.New("non int index")
 	ErrMultipleTypes    = errors.New("both sides of this expression must be the same type")
 	ErrBuiltinOverride  = errors.New("is a builtin type you cannot override")
 
@@ -52,19 +54,21 @@ type TypeError struct {
 func (e *TypeError) Error() string {
 	switch {
 	case errors.Is(e.Err, ErrInvalidType):
-		return fmt.Sprintf("%s: %s", e.Name(), e.Err.Error())
+		return fmt.Sprintf("%s: %s, expected %s but got %s", e.Name(), e.Err.Error(), e.Left.String(), e.Right.String())
 	case errors.Is(e.Err, ErrCannotUseType):
 		return fmt.Sprintf("%s: %s %s as %s", e.Name(), e.Err.Error(), e.Left.String(), e.Right.String())
-	case errors.Is(e.Err, ErrNotComparable):
+	case errors.Is(e.Err, ErrNotComparable), errors.Is(e.Err, ErrNotOperable), errors.Is(e.Err, ErrMultipleTypes):
 		return fmt.Sprintf("%s: %s, %s != %s", e.Name(), e.Err.Error(), e.Left.String(), e.Right.String())
 	case errors.Is(e.Err, ErrNotCallable):
 		return fmt.Sprintf("%s: %s, %s is not a function", e.Name(), e.Err.Error(), e.Type.String())
 	case errors.Is(e.Err, ErrNotIndexable):
-		return fmt.Sprintf("%s: %s, %s is not a list", e.Name(), e.Err.Error(), e.Type.String())
+		return fmt.Sprintf("%s: %s, %s is not a list or a struct", e.Name(), e.Err.Error(), e.Type.String())
 	case errors.Is(e.Err, ErrTooManyArguments), errors.Is(e.Err, ErrTooFewArguments):
 		return fmt.Sprintf("%s: %s, %s expects %d arguments but got %d", e.Name(), e.Err.Error(), e.Type.String(), e.N, e.M)
 	case errors.Is(e.Err, ErrNonBoolPredicate):
-		return fmt.Sprintf("%s: %s, this expression should be a bool", e.Name(), e.Err.Error())
+		return fmt.Sprintf("%s: %s, this expression should be a bool not a %s", e.Name(), e.Err.Error(), e.Type.String())
+	case errors.Is(e.Err, ErrNonIntIndex):
+		return fmt.Sprintf("%s: %s, this expression should be an int not %s", e.Name(), e.Err.Error(), e.Type.String())
 	case errors.Is(e.Err, ErrBuiltinOverride):
 		return fmt.Sprintf("%s: %s %s", e.Name(), e.Type.String(), e.Err.Error())
 	default:
