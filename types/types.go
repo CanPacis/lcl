@@ -12,6 +12,10 @@ type Type interface {
 	Base() Type
 }
 
+type Indexer interface {
+	Index(any) (Type, bool)
+}
+
 type typ struct {
 	name string
 	base Type
@@ -66,6 +70,8 @@ var (
 	U64    = &constant{"u64"}
 	F32    = &constant{"f32"}
 	F64    = &constant{"f64"}
+	Int    = New("int", I32)
+	Uint   = New("uint", U8)
 	Byte   = New("byte", U8)
 	Rune   = New("rune", U32)
 	String = New("string", NewList(Rune))
@@ -85,6 +91,14 @@ func (t *List) IsRoot() bool {
 
 func (t *List) Base() Type {
 	return nil
+}
+
+func (t *List) Index(v any) (Type, bool) {
+	_, ok := v.(int)
+	if !ok {
+		return Invalid, false
+	}
+	return t.Type, true
 }
 
 func NewList(t Type) *List {
@@ -127,6 +141,20 @@ func (t *Struct) Base() Type {
 	return nil
 }
 
+func (t *Struct) Index(v any) (Type, bool) {
+	member, ok := v.(string)
+	if !ok {
+		return Invalid, false
+	}
+
+	for _, pair := range *t {
+		if pair.Name == member {
+			return pair.Type, true
+		}
+	}
+	return Invalid, false
+}
+
 func NewStruct(pairs ...TypePair) *Struct {
 	s := Struct(pairs)
 	slices.SortFunc(s, func(a, b TypePair) int {
@@ -140,7 +168,7 @@ type Template struct {
 	In []Type
 }
 
-func (t *Template) Name() string {
+func (t *Template) String() string {
 	in := []string{}
 
 	for _, typ := range t.In {
