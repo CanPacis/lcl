@@ -43,7 +43,7 @@ func (s Scope) Lookup(name string) (types.Type, bool) {
 	if ok {
 		return typ, ok
 	}
-	return types.Empty, false
+	return types.Invalid, false
 }
 
 func NewScope() *Scope {
@@ -53,10 +53,6 @@ func NewScope() *Scope {
 		builtin: map[string]types.Type{
 			"true":  types.Bool,
 			"false": types.Bool,
-			"itoa": &types.Fn{
-				In:  []types.Type{types.Int},
-				Out: types.String,
-			},
 		},
 	}
 }
