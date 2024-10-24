@@ -7,7 +7,7 @@ import (
 )
 
 type Type interface {
-	Name() string
+	String() string
 	IsRoot() bool
 	Base() Type
 }
@@ -17,7 +17,7 @@ type typ struct {
 	base Type
 }
 
-func (t *typ) Name() string {
+func (t *typ) String() string {
 	return t.name
 }
 
@@ -40,7 +40,7 @@ type constant struct {
 	name string
 }
 
-func (t *constant) Name() string {
+func (t *constant) String() string {
 	return t.name
 }
 
@@ -52,18 +52,31 @@ func (t *constant) Base() Type {
 	return nil
 }
 
-var String = &constant{"string"}
-var Int = &constant{"int"}
-var Float = &constant{"float"}
-var Bool = &constant{"bool"}
-var Empty = &constant{"empty"}
+var (
+	Invalid = &constant{"invalid"}
+
+	Bool   = &constant{"bool"}
+	I8     = &constant{"i8"}
+	I16    = &constant{"i16"}
+	I32    = &constant{"i32"}
+	I64    = &constant{"i64"}
+	U8     = &constant{"u8"}
+	U16    = &constant{"u16"}
+	U32    = &constant{"u32"}
+	U64    = &constant{"u64"}
+	F32    = &constant{"f32"}
+	F64    = &constant{"f64"}
+	Byte   = New("byte", U8)
+	Rune   = New("rune", U32)
+	String = New("string", NewList(Rune))
+)
 
 type List struct {
 	Type Type
 }
 
-func (t *List) Name() string {
-	return fmt.Sprintf("%s[]", t.Type.Name())
+func (t *List) String() string {
+	return fmt.Sprintf("%s[]", t.Type.String())
 }
 
 func (t *List) IsRoot() bool {
@@ -96,14 +109,14 @@ func NewPair(i int, name string, typ Type) TypePair {
 
 type Struct []TypePair
 
-func (t *Struct) Name() string {
+func (t *Struct) String() string {
 	fields := []string{}
 
 	for _, pair := range *t {
-		fields = append(fields, fmt.Sprintf("(%d %s %s)", pair.Index, pair.Name, pair.Type.Name()))
+		fields = append(fields, fmt.Sprintf("(%d %s %s)", pair.Index, pair.Name, pair.Type.String()))
 	}
 
-	return fmt.Sprintf("struct {%s}", strings.Join(fields, " "))
+	return fmt.Sprintf("{%s}", strings.Join(fields, " "))
 }
 
 func (t *Struct) IsRoot() bool {
@@ -131,7 +144,7 @@ func (t *Template) Name() string {
 	in := []string{}
 
 	for _, typ := range t.In {
-		in = append(in, typ.Name())
+		in = append(in, typ.String())
 	}
 
 	return fmt.Sprintf("template (%s)", strings.Join(in, " "))
@@ -156,14 +169,14 @@ type Fn struct {
 	Out Type
 }
 
-func (t *Fn) Name() string {
+func (t *Fn) String() string {
 	in := []string{}
 
 	for _, typ := range t.In {
-		in = append(in, typ.Name())
+		in = append(in, typ.String())
 	}
 
-	return fmt.Sprintf("fn (%s) -> %s", strings.Join(in, " "), t.Out.Name())
+	return fmt.Sprintf("fn (%s) -> %s", strings.Join(in, " "), t.Out.String())
 }
 
 func (t *Fn) IsRoot() bool {
