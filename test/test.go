@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/CanPacis/go-i18n/errs"
-	"github.com/CanPacis/go-i18n/parser"
-	"github.com/CanPacis/go-i18n/parser/ast"
+	"github.com/CanPacis/lcl/errs"
+	"github.com/CanPacis/lcl/parser"
+	"github.com/CanPacis/lcl/parser/ast"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,7 +1,7 @@
 package parser_test
 
 import (
-	"github.com/CanPacis/go-i18n/parser/ast"
+	"github.com/CanPacis/lcl/parser/ast"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/CanPacis/go-i18n/errs"
-	"github.com/CanPacis/go-i18n/parser/ast"
+	"github.com/CanPacis/lcl/errs"
+	"github.com/CanPacis/lcl/parser/ast"
 )
 
 type Environment struct {

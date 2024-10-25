@@ -1,6 +1,6 @@
 package pkg
 
-import "github.com/CanPacis/go-i18n/types"
+import "github.com/CanPacis/lcl/types"
 
 type Package struct {
 	Name   string

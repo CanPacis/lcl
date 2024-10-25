@@ -3,11 +3,11 @@ package pkg_test
 import (
 	"testing"
 
-	"github.com/CanPacis/go-i18n/errs"
-	pkg "github.com/CanPacis/go-i18n/package"
-	"github.com/CanPacis/go-i18n/parser/ast"
-	"github.com/CanPacis/go-i18n/test"
-	"github.com/CanPacis/go-i18n/types"
+	"github.com/CanPacis/lcl/errs"
+	pkg "github.com/CanPacis/lcl/package"
+	"github.com/CanPacis/lcl/parser/ast"
+	"github.com/CanPacis/lcl/test"
+	"github.com/CanPacis/lcl/types"
 	"github.com/stretchr/testify/assert"
 )
 

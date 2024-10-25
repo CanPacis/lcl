@@ -3,7 +3,7 @@ package ast
 import (
 	"encoding/json"
 
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/parser/token"
 )
 
 type node struct {

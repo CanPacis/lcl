@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/parser/token"
 )
 
 type ErrorSet struct {

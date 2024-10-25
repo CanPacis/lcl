@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/CanPacis/go-i18n/parser/lexer"
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/parser/lexer"
+	"github.com/CanPacis/lcl/parser/token"
 	"github.com/stretchr/testify/assert"
 )
 

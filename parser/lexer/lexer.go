@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/parser/token"
 )
 
 const eof rune = -1

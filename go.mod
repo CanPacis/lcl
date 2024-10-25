@@ -1,4 +1,4 @@
-module github.com/CanPacis/go-i18n
+module github.com/CanPacis/lcl
 
 go 1.23.0
 

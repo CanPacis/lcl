@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/CanPacis/go-i18n/parser/ast"
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/parser/ast"
+	"github.com/CanPacis/lcl/parser/token"
 )
 
 type Type interface {

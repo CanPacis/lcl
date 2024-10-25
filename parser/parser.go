@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/CanPacis/go-i18n/errs"
-	"github.com/CanPacis/go-i18n/internal"
-	"github.com/CanPacis/go-i18n/parser/ast"
-	"github.com/CanPacis/go-i18n/parser/lexer"
-	"github.com/CanPacis/go-i18n/parser/token"
+	"github.com/CanPacis/lcl/errs"
+	"github.com/CanPacis/lcl/internal"
+	"github.com/CanPacis/lcl/parser/ast"
+	"github.com/CanPacis/lcl/parser/lexer"
+	"github.com/CanPacis/lcl/parser/token"
 )
 
 type Parser struct {

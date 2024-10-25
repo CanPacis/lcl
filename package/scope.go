@@ -1,11 +1,11 @@
 package pkg
 
 import (
-	"github.com/CanPacis/go-i18n/errs"
-	"github.com/CanPacis/go-i18n/internal"
-	"github.com/CanPacis/go-i18n/parser/ast"
-	"github.com/CanPacis/go-i18n/parser/token"
-	"github.com/CanPacis/go-i18n/types"
+	"github.com/CanPacis/lcl/errs"
+	"github.com/CanPacis/lcl/internal"
+	"github.com/CanPacis/lcl/parser/ast"
+	"github.com/CanPacis/lcl/parser/token"
+	"github.com/CanPacis/lcl/types"
 )
 
 type Context int
