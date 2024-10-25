@@ -94,6 +94,25 @@ func TestScope(t *testing.T) {
 				Body:   &ast.IdentExpr{Value: "undefined"},
 			},
 		},
+		&RegisterCase{
+			In: &ast.FnDefStmt{
+				Name: &ast.IdentExpr{Value: "DuplicateParams"},
+				Params: []*ast.Parameter{
+					{
+						Index: 0,
+						Name:  &ast.IdentExpr{Value: "dup"},
+						Type:  &ast.IdentExpr{Value: "int"},
+					},
+					{
+						Index: 1,
+						Name:  &ast.IdentExpr{Value: "dup"},
+						Type:  &ast.IdentExpr{Value: "string"},
+					},
+				},
+				Body: &ast.EmptyExpr{},
+			},
+			Err: errs.ErrDuplicateDefinition,
+		},
 		&ResolveCase{
 			In:  &ast.IdentExpr{Value: "undefined"},
 			Out: types.Invalid,

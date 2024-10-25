@@ -64,6 +64,19 @@ func (s *Scope) RegisterFn(def *ast.FnDefStmt) error {
 		}
 	}
 
+	paramDefs := map[string]*ast.Parameter{}
+	for _, param := range def.Params {
+		if original, exists := paramDefs[param.Name.Value]; exists {
+			return &errs.ReferenceError{
+				Err:      errs.ErrDuplicateDefinition,
+				Node:     param,
+				Original: original,
+				Value:    param.Name.Value,
+			}
+		}
+		paramDefs[param.Name.Value] = param
+	}
+
 	s.fnDefs[def.Name.Value] = def
 	return nil
 }
