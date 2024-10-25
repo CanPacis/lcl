@@ -16,15 +16,15 @@ func (e *ErrorSet) Error() string {
 	return e.Errors[0].Error()
 }
 
-func (e *ErrorSet) Position() (start token.Position, end token.Position) {
+func (e *ErrorSet) Range() token.Range {
 	p, ok := e.Errors[0].(interface {
-		Position() (token.Position, token.Position)
+		Range() token.Range
 	})
 	if ok {
-		return p.Position()
+		return p.Range()
 	}
 
-	return
+	return token.Range{}
 }
 
 func (e *ErrorSet) Unwrap() []error {

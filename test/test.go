@@ -139,7 +139,5 @@ func FormatError(err error) string {
 		return err.Error()
 	}
 
-	start, end := es.Position()
-	pos := start.String() + " - " + end.String()
-	return es.Error() + " at " + pos + " in " + es.File()
+	return es.Error() + " at " + es.Range().String() + " in " + es.File()
 }

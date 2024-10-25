@@ -85,7 +85,7 @@ func (e *TypeError) Name() string {
 	return "type error"
 }
 
-func (e *TypeError) Ranger() token.Range {
+func (e *TypeError) Range() token.Range {
 	return e.Node.Range()
 }
 
