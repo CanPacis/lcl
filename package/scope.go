@@ -4,6 +4,7 @@ import (
 	"github.com/CanPacis/go-i18n/errs"
 	"github.com/CanPacis/go-i18n/internal"
 	"github.com/CanPacis/go-i18n/parser/ast"
+	"github.com/CanPacis/go-i18n/parser/token"
 	"github.com/CanPacis/go-i18n/types"
 )
 
@@ -75,26 +76,6 @@ func (s *Scope) DefineBuiltin(name string, typ types.Type) {
 	s.builtin[name] = typ
 }
 
-func (s *Scope) Comparable(left, right types.Type) bool {
-	// TODO: properly implement
-	return left.String() == right.String()
-}
-
-func (s *Scope) Convertible(left, right types.Type) bool {
-	// TODO: properly implement
-	return left.String() == right.String()
-}
-
-func (s *Scope) Assignable(left, right types.Type) bool {
-	// TODO: properly implement
-	return left.String() == right.String()
-}
-
-func (s *Scope) Operable(left, right types.Type) bool {
-	// TODO: properly implement
-	return left == types.Int && right == types.Int
-}
-
 func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	switch expr := expr.(type) {
 	case *ast.BinaryExpr:
@@ -108,7 +89,7 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 			return types.Bool, err
 		}
 
-		if !s.Comparable(left, right) {
+		if !left.Comparable(right) {
 			return types.Bool, &errs.TypeError{
 				Err:   errs.ErrNotComparable,
 				Node:  expr,
@@ -129,7 +110,19 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 			return left, err
 		}
 
-		if !s.Operable(left, right) {
+		var op types.Operation
+		switch expr.Operator.Kind {
+		case token.PLUS:
+			op = types.Addition
+		case token.MINUS:
+			op = types.Subtraction
+		case token.STAR:
+			op = types.Multiplication
+		case token.FORWARD_SLASH:
+			op = types.Division
+		}
+
+		if !left.Operable(right, op) {
 			return left, &errs.TypeError{
 				Err:   errs.ErrNotOperable,
 				Node:  expr,
@@ -163,7 +156,7 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 			}
 		}
 
-		if !s.Convertible(left, right) {
+		if !left.Convertible(right) {
 			return types.Invalid, &errs.TypeError{
 				Err:   errs.ErrMultipleTypes,
 				Node:  expr,
@@ -217,7 +210,7 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 			}
 			param := callable.In[i]
 
-			if !s.Assignable(param, typ) {
+			if !param.Assignable(typ) {
 				return callable.Out, &errs.TypeError{
 					Err:   errs.ErrInvalidType,
 					Left:  param,
@@ -242,8 +235,15 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 			}
 		}
 
-		// TODO: check invalid type
-		typ, _ := indexer.Index(expr.Right.Value)
+		typ, ok := indexer.Index(expr.Right.Value)
+		if !ok {
+			return types.Invalid, &errs.TypeError{
+				Err:   errs.ErrInvalidIndex,
+				Type:  left,
+				Node:  expr.Right,
+				Value: expr.Right.Value,
+			}
+		}
 		return typ, nil
 	case *ast.ImportExpr:
 		scope, ok := s.imports[expr.Left.Value]
@@ -257,15 +257,15 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		return scope.ResolveExpr(expr.Right)
 	case *ast.IndexExpr:
-		left, err := s.ResolveExpr(expr.Host)
+		host, err := s.ResolveExpr(expr.Host)
 		if err != nil {
 			return types.Invalid, err
 		}
-		indexer, ok := left.(types.Indexer)
+		indexer, ok := host.(types.Indexer)
 		if !ok {
 			return types.Invalid, &errs.TypeError{
 				Err:  errs.ErrNotIndexable,
-				Type: left,
+				Type: host,
 				Node: expr.Host,
 			}
 		}
@@ -277,14 +277,22 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		if index != types.Int {
 			return types.Invalid, &errs.TypeError{
-				Err:  errs.ErrNonIntIndex,
-				Type: index,
-				Node: expr.Index,
+				Err:   errs.ErrInvalidIndex,
+				Type:  host,
+				Node:  expr.Index,
+				Value: index.String(),
 			}
 		}
 
-		// TODO: check invalid type
-		typ, _ := indexer.Index(0)
+		typ, ok := indexer.Index(0)
+		if !ok {
+			return types.Invalid, &errs.TypeError{
+				Err:   errs.ErrInvalidIndex,
+				Type:  host,
+				Node:  expr.Host,
+				Value: index.String(),
+			}
+		}
 		return typ, nil
 	case *ast.GroupExpr:
 		return s.ResolveExpr(expr.Expr)
@@ -314,15 +322,17 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	case *ast.StringLitExpr:
 		return types.String, nil
 	case *ast.TemplateLitExpr:
+		in := []types.Type{}
+
 		for _, part := range expr.Value {
 			typ, err := s.ResolveExpr(part)
 			if err != nil {
-				return typ, err
+				return types.NewTemplate([]types.Type{}), err
 			}
+			in = append(in, typ)
 		}
 
-		// TODO
-		return types.NewTemplate(nil), nil
+		return types.NewTemplate(in), nil
 	case *ast.NumberLitExpr:
 		isInt := expr.Value == float64(int(expr.Value))
 		if isInt {

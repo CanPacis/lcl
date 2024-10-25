@@ -73,6 +73,15 @@ func TestScope(t *testing.T) {
 		Out: types.Int,
 	})
 
+	scope.Define("newstr", types.New("str", types.NewList(types.Rune)))
+
+	scope.Define("user",
+		types.NewStruct(
+			types.NewPair(0, "name", types.String),
+			types.NewPair(1, "age", types.U8),
+		),
+	)
+
 	tests := []test.Injector[*pkg.Scope]{
 		&RegisterCase{
 			In:  duplicate,
@@ -180,6 +189,66 @@ func TestScope(t *testing.T) {
 			},
 			Out: types.Invalid,
 			Err: errs.ErrUnresolvedFnReference,
+		},
+		&ResolveCase{
+			In: &ast.BinaryExpr{
+				Left:  &ast.IdentExpr{Value: "true"},
+				Right: &ast.NumberLitExpr{Value: 0},
+			},
+			Out: types.Bool,
+			Err: errs.ErrNotComparable,
+		},
+		&ResolveCase{
+			In: &ast.BinaryExpr{
+				Left:  &ast.IdentExpr{Value: "newstr"},
+				Right: &ast.StringLitExpr{Value: ""},
+			},
+			Out: types.Bool,
+		},
+		&ResolveCase{
+			In: &ast.BinaryExpr{
+				Left:  &ast.NumberLitExpr{Value: 5},
+				Right: &ast.IdentExpr{Value: "newstr"},
+			},
+			Out: types.Bool,
+			Err: errs.ErrNotComparable,
+		},
+		&ResolveCase{
+			In: &ast.MemberExpr{
+				Left:  &ast.IdentExpr{Value: "user"},
+				Right: &ast.IdentExpr{Value: "name"},
+			},
+			Out: types.String,
+		},
+		&ResolveCase{
+			In: &ast.MemberExpr{
+				Left:  &ast.IdentExpr{Value: "user"},
+				Right: &ast.IdentExpr{Value: "age"},
+			},
+			Out: types.U8,
+		},
+		&ResolveCase{
+			In: &ast.MemberExpr{
+				Left:  &ast.IdentExpr{Value: "user"},
+				Right: &ast.IdentExpr{Value: "invalid"},
+			},
+			Out: types.Invalid,
+			Err: errs.ErrInvalidIndex,
+		},
+		&ResolveCase{
+			In: &ast.IndexExpr{
+				Host:  &ast.StringLitExpr{Value: "string"},
+				Index: &ast.NumberLitExpr{Value: 0},
+			},
+			Out: types.Rune,
+		},
+		&ResolveCase{
+			In: &ast.IndexExpr{
+				Host:  &ast.StringLitExpr{Value: "string"},
+				Index: &ast.IdentExpr{Value: "true"},
+			},
+			Out: types.Invalid,
+			Err: errs.ErrInvalidIndex,
 		},
 	}
 	test.RunWith(t, tests, scope)

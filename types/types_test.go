@@ -141,3 +141,64 @@ func TestEnvironment(t *testing.T) {
 	}
 	test.RunWith(t, tests, env)
 }
+
+type CompareCase struct {
+	Left   types.Type
+	Right  types.Type
+	Result bool
+}
+
+func (c *CompareCase) Run(assert *assert.Assertions) {
+	assert.Equal(c.Result, c.Left.Comparable(c.Right))
+}
+
+func TestCompare(t *testing.T) {
+	tests := []test.Runner{
+		&CompareCase{
+			Left:   types.Bool,
+			Right:  types.Bool,
+			Result: true,
+		},
+		&CompareCase{
+			Left:   types.I32,
+			Right:  types.Int,
+			Result: true,
+		},
+		&CompareCase{
+			Right:  types.Int,
+			Left:   types.I32,
+			Result: true,
+		},
+		&CompareCase{
+			Right:  types.Int,
+			Left:   types.I64,
+			Result: false,
+		},
+		&CompareCase{
+			Right:  types.String,
+			Left:   types.String,
+			Result: true,
+		},
+		&CompareCase{
+			Right:  types.String,
+			Left:   types.NewList(types.Rune),
+			Result: true,
+		},
+		&CompareCase{
+			Right:  types.String,
+			Left:   types.NewList(types.Bool),
+			Result: false,
+		},
+		&CompareCase{
+			Right:  types.String,
+			Left:   types.NewList(types.New("RUNE", types.Rune)),
+			Result: true,
+		},
+		&CompareCase{
+			Right:  types.String,
+			Left:   types.NewList(types.New("U32", types.U32)),
+			Result: true,
+		},
+	}
+	test.Run(t, tests)
+}
