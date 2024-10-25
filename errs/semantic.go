@@ -85,8 +85,8 @@ func (e *TypeError) Name() string {
 	return "type error"
 }
 
-func (e *TypeError) Position() (start token.Position, end token.Position) {
-	return e.Node.Start(), e.Node.End()
+func (e *TypeError) Ranger() token.Range {
+	return e.Node.Range()
 }
 
 type ReferenceError struct {
@@ -101,8 +101,7 @@ func (e *ReferenceError) Error() string {
 	case errors.Is(e.Err, ErrInvalidDeclName):
 		return fmt.Sprintf("%s: %s '%s'", e.Name(), e.Err.Error(), e.Value)
 	case errors.Is(e.Err, ErrDuplicateDefinition):
-		pos := fmt.Sprintf("%s - %s", e.Original.Start(), e.Original.End())
-		return fmt.Sprintf("%s: %s, %s is already defined here %s", e.Name(), e.Err.Error(), e.Value, pos)
+		return fmt.Sprintf("%s: %s, %s is already defined here %s", e.Name(), e.Err.Error(), e.Value, e.Original.Range())
 	case errors.Is(e.Err, ErrInvalidTargetTag):
 		return fmt.Sprintf("%s: %s '%s'", e.Name(), e.Err.Error(), e.Value)
 	case errors.Is(e.Err, ErrUndeclaredTargetTag):
@@ -127,6 +126,6 @@ func (e *ReferenceError) Name() string {
 	return "reference error"
 }
 
-func (e *ReferenceError) Position() (start token.Position, end token.Position) {
-	return e.Node.Start(), e.Node.End()
+func (e *ReferenceError) Range() token.Range {
+	return e.Node.Range()
 }

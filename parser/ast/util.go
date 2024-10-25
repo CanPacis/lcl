@@ -15,8 +15,11 @@ func (n *node) NodeType() string {
 	return n.typ
 }
 
-func (n *node) Start() token.Position {
-	return n.start
+func (n *node) Range() token.Range {
+	return token.Range{
+		Start: n.start,
+		End:   n.end,
+	}
 }
 
 func (n *node) End() token.Position {
@@ -26,8 +29,7 @@ func (n *node) End() token.Position {
 func (n *node) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type":  n.NodeType(),
-		"start": n.Start(),
-		"end":   n.End(),
+		"range": n.Range(),
 	})
 }
 
@@ -50,8 +52,7 @@ func (n *stmtNode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"comments": n.Comments(),
 		"type":     n.NodeType(),
-		"start":    n.Start(),
-		"end":      n.End(),
+		"range":    n.Range(),
 	})
 }
 

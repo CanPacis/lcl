@@ -60,6 +60,6 @@ func (e *SyntaxError) Name() string {
 	return "syntax error"
 }
 
-func (e *SyntaxError) Position() (token.Position, token.Position) {
-	return e.Token.Position()
+func (e *SyntaxError) Range() token.Range {
+	return e.Token.Range()
 }

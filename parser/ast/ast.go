@@ -7,8 +7,7 @@ import (
 type Node interface {
 	NodeType() string
 
-	Start() token.Position
-	End() token.Position
+	Range() token.Range
 }
 
 const FileNode = "file"

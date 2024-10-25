@@ -14,6 +14,15 @@ func (p Position) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
+type Range struct {
+	Start Position
+	End   Position
+}
+
+func (r Range) String() string {
+	return fmt.Sprintf("%s - %s", r.Start, r.End)
+}
+
 func NewPosition(line, col int) Position {
 	return Position{
 		Line:   line,
@@ -186,6 +195,9 @@ func (t Token) String() string {
 	}
 }
 
-func (t Token) Position() (Position, Position) {
-	return t.Start, t.End
+func (t Token) Range() Range {
+	return Range{
+		Start: t.Start,
+		End:   t.End,
+	}
 }
