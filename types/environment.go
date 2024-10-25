@@ -156,6 +156,8 @@ func NewEnvironment() *Environment {
 			"u64":    U64,
 			"f32":    F32,
 			"f64":    F64,
+			"int":    Int,
+			"uint":   Uint,
 			"byte":   Byte,
 			"rune":   Rune,
 			"string": String,
