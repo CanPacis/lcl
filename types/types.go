@@ -60,7 +60,7 @@ func (t *typ) Convertible(o Type) bool {
 }
 
 func (t *typ) Operable(o Type, op Operation) bool {
-	return false
+	return t.base.Operable(o, op)
 }
 
 type indexer struct {
