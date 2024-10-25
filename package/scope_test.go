@@ -90,14 +90,14 @@ func TestScope(t *testing.T) {
 		&RegisterCase{
 			In: &ast.FnDefStmt{
 				Name:   &ast.IdentExpr{Value: "Undefined"},
-				Params: []*ast.Parameter{},
+				Params: []*ast.TypePair{},
 				Body:   &ast.IdentExpr{Value: "undefined"},
 			},
 		},
 		&RegisterCase{
 			In: &ast.FnDefStmt{
 				Name: &ast.IdentExpr{Value: "DuplicateParams"},
-				Params: []*ast.Parameter{
+				Params: []*ast.TypePair{
 					{
 						Index: 0,
 						Name:  &ast.IdentExpr{Value: "dup"},

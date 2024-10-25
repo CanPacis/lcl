@@ -57,22 +57,22 @@ type TypeDefStmt struct {
 	Type TypeExpr   `json:"type"`
 }
 
-const ParameterNode = "parameter"
+// const ParameterNode = "parameter"
 
-type Parameter struct {
-	Node  `json:"node"`
-	Index int        `json:"index"`
-	Name  *IdentExpr `json:"name"`
-	Type  TypeExpr   `json:"type"`
-}
+// type Parameter struct {
+// 	Node  `json:"node"`
+// 	Index int        `json:"index"`
+// 	Name  *IdentExpr `json:"name"`
+// 	Type  TypeExpr   `json:"type"`
+// }
 
 const FnDefStmtNode = "fn_def_stmt"
 
 type FnDefStmt struct {
 	Stmt   `json:"node"`
-	Name   *IdentExpr   `json:"name"`
-	Params []*Parameter `json:"params"`
-	Body   Expr         `json:"body"`
+	Name   *IdentExpr  `json:"name"`
+	Params []*TypePair `json:"params"`
+	Body   Expr        `json:"body"`
 }
 
 const SectionStmtNode = "section_stmt"
@@ -114,10 +114,10 @@ const TemplateEntryNode = "template_entry"
 
 type TemplateEntry struct {
 	Node        `json:"node"`
-	Partitioned bool         `json:"partitioned"`
-	Name        *IdentExpr   `json:"name"`
-	Fields      []*Field     `json:"fields"`
-	Params      []*Parameter `json:"params"`
+	Partitioned bool        `json:"partitioned"`
+	Name        *IdentExpr  `json:"name"`
+	Fields      []*Field    `json:"fields"`
+	Params      []*TypePair `json:"params"`
 }
 
 const EmptyEntryNode = "empty_entry"

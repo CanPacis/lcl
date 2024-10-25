@@ -245,9 +245,9 @@ func (p *Parser) parseTypeDefStmt() *ast.TypeDefStmt {
 func (p *Parser) parseFnDefStmt() *ast.FnDefStmt {
 	start := p.expect(token.FN)
 
-	params := []*ast.Parameter{}
+	params := []*ast.TypePair{}
 	for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-		params = append(params, p.parseParameter(i))
+		params = append(params, p.parseTypePair(i))
 	}
 
 	p.skip()
@@ -296,12 +296,12 @@ func (p *Parser) parseEntry() ast.Entry {
 	isPartitioned := false
 	name := p.parseIdentExpr()
 
-	params := []*ast.Parameter{}
+	params := []*ast.TypePair{}
 	if p.current.Kind == token.LEFT_PARENS {
 		isTemplate = true
 
 		for i := range p.seq(token.LEFT_PARENS, token.RIGHT_PARENS) {
-			params = append(params, p.parseParameter(i))
+			params = append(params, p.parseTypePair(i))
 		}
 	}
 
@@ -710,26 +710,14 @@ func (p *Parser) parseStructExpr() ast.TypeExpr {
 
 func (p *Parser) parseTypePair(i int) *ast.TypePair {
 	name := p.expect(token.IDENT)
-	p.skip()
-	typ := p.parseTypeExpr()
-
-	return &ast.TypePair{
-		Name:  ast.NewIdent(name),
-		Index: i,
-		Type:  typ,
-	}
-}
-
-func (p *Parser) parseParameter(i int) *ast.Parameter {
-	name := p.parseIdentExpr()
 	p.expect(token.COLON)
 	p.skip()
 	typ := p.parseTypeExpr()
 
-	return &ast.Parameter{
-		Node:  ast.NewNode(ast.ParameterNode, name.Start(), typ.End()),
+	return &ast.TypePair{
+		Node:  ast.NewNode(ast.TypePairNode, name.Start, typ.End()),
+		Name:  ast.NewIdent(name),
 		Index: i,
-		Name:  name,
 		Type:  typ,
 	}
 }
