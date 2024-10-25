@@ -65,7 +65,7 @@ func (e *TypeError) Error() string {
 	case errors.Is(e.Err, ErrNotIndexable):
 		return fmt.Sprintf("%s: %s, %s is not a list or a struct", e.Name(), e.Err.Error(), e.Type.String())
 	case errors.Is(e.Err, ErrInvalidIndex):
-		return fmt.Sprintf("%s: %s, %s does not have a field %s", e.Name(), e.Err.Error(), e.Type.String(), e.Value)
+		return fmt.Sprintf("%s: %s, cannot index %s with a %s", e.Name(), e.Err.Error(), e.Type.String(), e.Value)
 	case errors.Is(e.Err, ErrTooManyArguments), errors.Is(e.Err, ErrTooFewArguments):
 		return fmt.Sprintf("%s: %s, %s expects %d arguments but got %d", e.Name(), e.Err.Error(), e.Type.String(), e.N, e.M)
 	case errors.Is(e.Err, ErrNonBoolPredicate):

@@ -37,6 +37,7 @@ func (e *ErrorSet) File() string {
 
 func NewErrorSet(file string, errors []error) error {
 	return &ErrorSet{
+		file:   file,
 		Errors: errors,
 	}
 }
