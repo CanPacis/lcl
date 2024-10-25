@@ -170,7 +170,7 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		}
 
 		if !left.Convertible(right) {
-			return types.Invalid, &errs.TypeError{
+			return left, &errs.TypeError{
 				Err:   errs.ErrMultipleTypes,
 				Node:  expr,
 				Left:  left,

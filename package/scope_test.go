@@ -6,6 +6,7 @@ import (
 	"github.com/CanPacis/lcl/errs"
 	pkg "github.com/CanPacis/lcl/package"
 	"github.com/CanPacis/lcl/parser/ast"
+	"github.com/CanPacis/lcl/parser/token"
 	"github.com/CanPacis/lcl/test"
 	"github.com/CanPacis/lcl/types"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,7 @@ func TestScope(t *testing.T) {
 	})
 
 	scope.Define("newstr", types.New("str", types.NewList(types.Rune)))
+	scope.Define("age", types.Int)
 
 	scope.Define("user",
 		types.NewStruct(
@@ -268,6 +270,73 @@ func TestScope(t *testing.T) {
 			},
 			Out: types.Invalid,
 			Err: errs.ErrInvalidIndex,
+		},
+		&ResolveCase{
+			In: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.EQUALS},
+				Left:     &ast.NumberLitExpr{Value: 5},
+				Right:    &ast.NumberLitExpr{Value: 6},
+			},
+			Out: types.Bool,
+		},
+		&ResolveCase{
+			In: &ast.GroupExpr{
+				Expr: &ast.NumberLitExpr{Value: 3.1},
+			},
+			Out: types.F64,
+		},
+		&ResolveCase{
+			In: &ast.GroupExpr{
+				Expr: &ast.BinaryExpr{
+					Operator: token.Token{Kind: token.EQUALS},
+					Left:     &ast.NumberLitExpr{Value: 3},
+					Right:    &ast.NumberLitExpr{Value: 3},
+				},
+			},
+			Out: types.Bool,
+		},
+		&ResolveCase{
+			In: &ast.BinaryExpr{
+				Operator: token.Token{Kind: token.EQUALS},
+				Left:     &ast.NumberLitExpr{Value: 5},
+				Right:    &ast.NumberLitExpr{Value: 5.5},
+			},
+			Out: types.Bool,
+			Err: errs.ErrNotComparable,
+		},
+		&ResolveCase{
+			In: &ast.TernaryExpr{
+				Predicate: &ast.BinaryExpr{
+					Operator: token.Token{Kind: token.GT},
+					Left:     &ast.IdentExpr{Value: "age"},
+					Right:    &ast.NumberLitExpr{Value: 18},
+				},
+				Left:  &ast.StringLitExpr{Value: ""},
+				Right: &ast.NumberLitExpr{Value: 0},
+			},
+			Out: types.String,
+			Err: errs.ErrMultipleTypes,
+		},
+		&ResolveCase{
+			In: &ast.TernaryExpr{
+				Predicate: &ast.IdentExpr{Value: "age"},
+				Left:      &ast.StringLitExpr{Value: ""},
+				Right:     &ast.NumberLitExpr{Value: 0},
+			},
+			Out: types.String,
+			Err: errs.ErrNonBoolPredicate,
+		},
+		&ResolveCase{
+			In: &ast.TernaryExpr{
+				Predicate: &ast.BinaryExpr{
+					Operator: token.Token{Kind: token.GT},
+					Left:     &ast.IdentExpr{Value: "age"},
+					Right:    &ast.NumberLitExpr{Value: 18},
+				},
+				Left:  &ast.StringLitExpr{Value: ""},
+				Right: &ast.StringLitExpr{Value: ""},
+			},
+			Out: types.String,
 		},
 	}
 	test.RunWith(t, tests, scope)
