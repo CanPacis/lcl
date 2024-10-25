@@ -2,8 +2,17 @@ package pkg
 
 import (
 	"github.com/CanPacis/go-i18n/errs"
+	"github.com/CanPacis/go-i18n/internal"
 	"github.com/CanPacis/go-i18n/parser/ast"
 	"github.com/CanPacis/go-i18n/types"
+)
+
+type Context int
+
+const (
+	CONST Context = iota
+	IMPORT
+	FN
 )
 
 type Scope struct {
@@ -14,6 +23,7 @@ type Scope struct {
 	importDefs map[string]*ast.IdentExpr
 	fnDefs     map[string]*ast.FnDefStmt
 
+	ctx    *internal.Stack[Context]
 	parent *Scope
 }
 
@@ -39,6 +49,10 @@ func (s *Scope) Import(name string, scope *Scope) {
 	s.imports[name] = scope
 }
 
+func (s *Scope) Pop() *Scope {
+	return s.parent
+}
+
 func (s *Scope) RegisterFn(def *ast.FnDefStmt) error {
 	if original, exists := s.fnDefs[def.Name.Value]; exists {
 		return &errs.ReferenceError{
@@ -55,6 +69,10 @@ func (s *Scope) RegisterFn(def *ast.FnDefStmt) error {
 
 func (s *Scope) Define(name string, typ types.Type) {
 	s.objects[name] = typ
+}
+
+func (s *Scope) DefineBuiltin(name string, typ types.Type) {
+	s.builtin[name] = typ
 }
 
 func (s *Scope) Comparable(left, right types.Type) bool {
@@ -156,6 +174,8 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 
 		return left, nil
 	case *ast.CallExpr:
+		s.ctx.Push(FN)
+		defer s.ctx.Pop()
 		fn, err := s.ResolveExpr(expr.Fn)
 		if err != nil {
 			return types.Invalid, err
@@ -189,7 +209,9 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 		}
 
 		for i, arg := range expr.Args {
+			s.ctx.Push(CONST)
 			typ, err := s.ResolveExpr(arg)
+			s.ctx.Pop()
 			if err != nil {
 				return callable.Out, err
 			}
@@ -269,8 +291,21 @@ func (s Scope) ResolveExpr(expr ast.Expr) (types.Type, error) {
 	case *ast.IdentExpr:
 		typ, ok := s.lookup(expr.Value)
 		if !ok {
+			var e error
+
+			switch s.ctx.Last() {
+			case CONST:
+				e = errs.ErrUnresolvedConstReference
+			case FN:
+				e = errs.ErrUnresolvedFnReference
+			case IMPORT:
+				e = errs.ErrUnresolvedImportReference
+			default:
+				e = errs.ErrUnresolvedConstReference
+			}
+
 			return types.Invalid, &errs.ReferenceError{
-				Err:   errs.ErrUnresolvedConstReference,
+				Err:   e,
 				Value: expr.Value,
 				Node:  expr,
 			}
@@ -334,6 +369,9 @@ func NewScope() *Scope {
 		objects:    make(map[string]types.Type),
 		importDefs: make(map[string]*ast.IdentExpr),
 		fnDefs:     make(map[string]*ast.FnDefStmt),
+
+		ctx: internal.NewStack(CONST),
+
 		builtin: map[string]types.Type{
 			"true":  types.Bool,
 			"false": types.Bool,
@@ -349,6 +387,7 @@ func NewSubScope(parent *Scope) *Scope {
 		importDefs: make(map[string]*ast.IdentExpr),
 		fnDefs:     make(map[string]*ast.FnDefStmt),
 
+		ctx:    internal.NewStack(CONST),
 		parent: parent,
 	}
 }
