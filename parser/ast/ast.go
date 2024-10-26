@@ -56,15 +56,6 @@ type TypeDefStmt struct {
 	Type TypeExpr   `json:"type"`
 }
 
-// const ParameterNode = "parameter"
-
-// type Parameter struct {
-// 	Node  `json:"node"`
-// 	Index int        `json:"index"`
-// 	Name  *IdentExpr `json:"name"`
-// 	Type  TypeExpr   `json:"type"`
-// }
-
 const FnDefStmtNode = "fn_def_stmt"
 
 type FnDefStmt struct {
