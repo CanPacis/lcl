@@ -1,24 +1,24 @@
 package types
 
-type constant struct {
+type Constant struct {
 	name  string
 	canop bool
 }
 
-func (t *constant) String() string {
+func (t *Constant) String() string {
 	return t.name
 }
 
-func (t *constant) IsRoot() bool {
+func (t *Constant) IsRoot() bool {
 	return true
 }
 
-func (t *constant) Base() Type {
+func (t *Constant) Base() Type {
 	return nil
 }
 
-func (t *constant) Assignable(o Type) bool {
-	c, ok := o.(*constant)
+func (t *Constant) Assignable(o Type) bool {
+	c, ok := o.(*Constant)
 	if !ok {
 		return false
 	}
@@ -26,19 +26,19 @@ func (t *constant) Assignable(o Type) bool {
 	return t.name == c.name
 }
 
-func (t *constant) Comparable(o Type) bool {
-	c, ok := RootOf(o).(*constant)
+func (t *Constant) Comparable(o Type) bool {
+	c, ok := RootOf(o).(*Constant)
 	if !ok {
 		return false
 	}
 	return t.name == c.name
 }
 
-func (t *constant) Convertible(o Type) bool {
+func (t *Constant) Convertible(o Type) bool {
 	return t.Comparable(RootOf(o))
 }
 
-func (t *constant) Operable(o Type, op Operation) bool {
+func (t *Constant) Operable(o Type, op Operation) bool {
 	if !t.canop {
 		return false
 	}
@@ -48,19 +48,19 @@ func (t *constant) Operable(o Type, op Operation) bool {
 }
 
 var (
-	Invalid = &constant{"invalid", false}
+	Invalid = &Constant{"invalid", false}
 
-	Bool   = &constant{"bool", false}
-	I8     = &constant{"i8", true}
-	I16    = &constant{"i16", true}
-	I32    = &constant{"i32", true}
-	I64    = &constant{"i64", true}
-	U8     = &constant{"u8", true}
-	U16    = &constant{"u16", true}
-	U32    = &constant{"u32", true}
-	U64    = &constant{"u64", true}
-	F32    = &constant{"f32", true}
-	F64    = &constant{"f64", true}
+	Bool   = &Constant{"bool", false}
+	I8     = &Constant{"i8", true}
+	I16    = &Constant{"i16", true}
+	I32    = &Constant{"i32", true}
+	I64    = &Constant{"i64", true}
+	U8     = &Constant{"u8", true}
+	U16    = &Constant{"u16", true}
+	U32    = &Constant{"u32", true}
+	U64    = &Constant{"u64", true}
+	F32    = &Constant{"f32", true}
+	F64    = &Constant{"f64", true}
 	Int    = New("int", I32)
 	Uint   = New("uint", U8)
 	Byte   = New("byte", U8)

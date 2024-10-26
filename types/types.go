@@ -25,25 +25,25 @@ const (
 	Exponent
 )
 
-type typ struct {
+type Extended struct {
 	name string
 	base Type
 }
 
-func (t *typ) String() string {
+func (t *Extended) String() string {
 	return t.name
 }
 
-func (t *typ) IsRoot() bool {
+func (t *Extended) IsRoot() bool {
 	return false
 }
 
-func (t *typ) Base() Type {
+func (t *Extended) Base() Type {
 	return t.base
 }
 
-func (t *typ) Assignable(o Type) bool {
-	c, ok := o.(*typ)
+func (t *Extended) Assignable(o Type) bool {
+	c, ok := o.(*Extended)
 	if !ok {
 		return false
 	}
@@ -51,15 +51,15 @@ func (t *typ) Assignable(o Type) bool {
 	return t.name == c.name
 }
 
-func (t *typ) Comparable(o Type) bool {
+func (t *Extended) Comparable(o Type) bool {
 	return t.base.Comparable(RootOf(o))
 }
 
-func (t *typ) Convertible(o Type) bool {
+func (t *Extended) Convertible(o Type) bool {
 	return t.base.Comparable(RootOf(o))
 }
 
-func (t *typ) Operable(o Type, op Operation) bool {
+func (t *Extended) Operable(o Type, op Operation) bool {
 	return t.base.Operable(o, op)
 }
 
@@ -69,7 +69,7 @@ type indexer struct {
 }
 
 func New(name string, base Type) Type {
-	var t Type = &typ{
+	var t Type = &Extended{
 		name: name,
 		base: base,
 	}
