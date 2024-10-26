@@ -63,7 +63,7 @@ func (t *Extended) Operable(o Type, op Operation) bool {
 	return t.base.Operable(o, op)
 }
 
-type indexer struct {
+type ExtIndexer struct {
 	Type
 	Indexer
 }
@@ -76,7 +76,7 @@ func New(name string, base Type) Type {
 
 	i, ok := base.(Indexer)
 	if ok {
-		t = &indexer{
+		t = &ExtIndexer{
 			Type:    t,
 			Indexer: i,
 		}
